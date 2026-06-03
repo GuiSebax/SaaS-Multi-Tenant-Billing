@@ -141,7 +141,7 @@ M7 — Frontend          [ ] Pendente
 Marque `[x]` quando o milestone estiver completo e anote o PR atual abaixo:
 
 ```
-PR atual: 1.1 — Monorepo com Turborepo
+PR atual: 1.3 - Docker Compose
 ```
 
 ---
