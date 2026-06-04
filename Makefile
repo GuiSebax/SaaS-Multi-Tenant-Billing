@@ -10,4 +10,4 @@ logs:
 	docker compose logs -f
 
 psql:
-	docker compose exec postgres psql -U app_user -d saas_dev
+	docker compose exec postgres psql -U postgres -d saas_dev

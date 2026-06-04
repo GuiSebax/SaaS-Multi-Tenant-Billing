@@ -5,12 +5,13 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: saas_dev
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: dev_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
       - ./docker/postgres-data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d saas_dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saas_dev"]
       interval: 10s
       timeout: 5s
       retries: 5

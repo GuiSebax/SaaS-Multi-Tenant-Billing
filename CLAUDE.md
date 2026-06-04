@@ -1,3 +1,9 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
 ## O que é este projeto
 
 Plataforma de gestão de projetos B2B (Notion/Linear simplificado) com multi-tenancy real,
@@ -15,6 +21,67 @@ Antes de qualquer implementação, leia:
 - `docs/architecture/ARQUITETURA.md` — stack, modelagem, fluxos críticos, ADRs
 
 Se houver conflito entre este arquivo e os docs acima, os docs acima prevalecem.
+
+---
+
+## Comandos de desenvolvimento
+
+### Setup inicial
+
+```bash
+pnpm install
+cp apps/api/.env.example apps/api/.env  # preencher valores reais
+make up                                  # sobe PostgreSQL + Redis via Docker
+```
+
+### Dev (monorepo completo)
+
+```bash
+pnpm dev          # inicia api (porta 3001) + web (porta 3000) em paralelo via Turbo
+pnpm build        # build de todos os packages e apps (respeita ordem de dependência)
+pnpm lint         # lint em todos os workspaces
+pnpm test         # testes em todos os workspaces
+```
+
+### Filtros por app/package
+
+```bash
+pnpm --filter @saas-platform/api dev
+pnpm --filter @saas-platform/api test
+pnpm --filter @saas-platform/api test -- --testPathPattern=auth
+pnpm --filter @saas-platform/web dev
+```
+
+### Docker / banco
+
+```bash
+make up     # docker compose up -d
+make down   # docker compose down
+make logs   # docker compose logs -f
+make psql   # psql como app_user no saas_dev
+```
+
+### Notas de ambiente
+
+- Variáveis de ambiente em `apps/api/.env` (não commitado); template em `apps/api/.env.example`.
+- Dentro do Docker, os hostnames são `postgres` e `redis`. Fora do Docker, use `localhost`.
+- `NODE_ENV=test` desliga a validação de `STRIPE_*` se necessário para testes locais (ajustar `envSchema` conforme evoluir).
+
+---
+
+## Path aliases (API)
+
+O `tsconfig.json` do `apps/api` define os seguintes aliases — use-os, nunca caminhos relativos longos:
+
+| Alias | Aponta para |
+|---|---|
+| `@modules/*` | `src/modules/*` |
+| `@common/*` | `src/common/*` |
+| `@database/*` | `src/database/*` |
+| `@config/*` | `src/config/*` |
+| `@saas-platform/shared` | `packages/shared/src` |
+
+O `tsc-alias` resolve os aliases no build — o passo `nest build && tsc-alias` é obrigatório.
 
 ---
 
@@ -57,6 +124,10 @@ saas-platform/
 ├── CLAUDE.md              → este arquivo
 └── Makefile
 ```
+
+Portas: API em `3001` com prefixo global `/api` (todas as rotas são `/api/...`), Web em `3000`.
+
+O Turbo garante que `packages/shared` seja buildado antes de `apps/api` e `apps/web` — nunca importe de `packages/shared/src` diretamente em produção; use o alias ou o pacote publicado.
 
 ---
 
@@ -141,7 +212,7 @@ M7 — Frontend          [ ] Pendente
 Marque `[x]` quando o milestone estiver completo e anote o PR atual abaixo:
 
 ```
-PR atual: 1.3 - Docker Compose
+PR atual: 1.4 - Drizzle Setup + Conexão com Tenant Context
 ```
 
 ---
