@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
+  DATABASE_ADMIN_URL: z.string().url().optional(),
   REDIS_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),

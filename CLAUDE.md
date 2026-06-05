@@ -65,7 +65,7 @@ make psql   # psql como app_user no saas_dev
 
 - Variáveis de ambiente em `apps/api/.env` (não commitado); template em `apps/api/.env.example`.
 - Dentro do Docker, os hostnames são `postgres` e `redis`. Fora do Docker, use `localhost`.
-- `NODE_ENV=test` **não** desliga STRIPE_* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
+- `NODE_ENV=test` **não** desliga STRIPE\_\* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
 
 Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
@@ -153,18 +153,19 @@ O Turbo garante que `packages/shared` seja buildado antes de `apps/api` e `apps/
 
 Arquivos por domínio (não por módulo NestJS):
 
-| Arquivo            | Tabelas                                                        |
-| ------------------ | -------------------------------------------------------------- |
-| `users.ts`         | `users`                                                        |
-| `organizations.ts` | `organizations`, `organization_members`, `invitations`         |
-| `projects.ts`      | `projects`                                                     |
-| `tasks.ts`         | `tasks`, `task_comments`                                       |
-| `billing.ts`       | `billing_subscriptions`                                        |
-| `auth.ts`          | `refresh_tokens`, `processed_webhook_events`                   |
-| `relations.ts`     | Todas as relações Drizzle (sem DDL)                            |
-| `index.ts`         | Re-exporta tudo — sempre importe de `@database/schema`         |
+| Arquivo            | Tabelas                                                |
+| ------------------ | ------------------------------------------------------ |
+| `users.ts`         | `users`                                                |
+| `organizations.ts` | `organizations`, `organization_members`, `invitations` |
+| `projects.ts`      | `projects`                                             |
+| `tasks.ts`         | `tasks`, `task_comments`                               |
+| `billing.ts`       | `billing_subscriptions`                                |
+| `auth.ts`          | `refresh_tokens`, `processed_webhook_events`           |
+| `relations.ts`     | Todas as relações Drizzle (sem DDL)                    |
+| `index.ts`         | Re-exporta tudo — sempre importe de `@database/schema` |
 
 Notas de design:
+
 - `tasks.organization_id` e `task_comments.organization_id` existem no schema Drizzle mas são **somente leitura** — preenchidos por trigger, nunca inseridos via aplicação.
 - `billing_subscriptions` tem `organization_id` com `.unique()` — garante 1 subscription por organização no nível de banco.
 - `processed_webhook_events` fica em `auth.ts` (junto com `refresh_tokens`) — ambos são tabelas de controle de sessão/idempotência sem RLS.
@@ -233,7 +234,7 @@ Erro ao atingir limite:
 ## Milestones e estado atual
 
 ```
-M1 — Fundação          [ ] Em andamento (PR 1.5 - Schema Completo)
+M1 — Fundação          [ ] Em andamento
 M2 — Auth              [ ] Pendente
 M3 — Core Tenant       [ ] Pendente
 M4 — Core do Produto   [ ] Pendente
@@ -246,11 +247,12 @@ M7 — Frontend          [ ] Pendente
 Marque `[x]` quando o milestone estiver completo.
 
 M1 concluído até agora:
+
 - PRs 1.1–1.5: monorepo, Docker, Makefile, Drizzle + DatabaseModule, TenantDbService (withTenantContext/withoutTenantContext), TenantMiddleware, schema completo (users, orgs, projects, tasks, billing, auth).
 - Migrations SQL ainda vazias — RLS/policies/triggers pendentes.
 
 ```
-PR atual: próximo — M1 restante: migrations RLS + seed ou início M2 (Auth)
+PR atual: 1.6 - Migration: RLS, Policies e Triggers
 ```
 
 ---

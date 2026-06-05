@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { TenantDbService } from './tenant-db.service';
+import { MigrationRunnerService } from './migration-runner.service';
 
 export const PG_POOL = Symbol('PG_POOL');
 export const DRIZZLE_DB = Symbol('DRIZZLE_DB');
@@ -11,6 +12,7 @@ export const DRIZZLE_DB = Symbol('DRIZZLE_DB');
 @Global()
 @Module({
   providers: [
+    MigrationRunnerService,
     {
       provide: PG_POOL,
       inject: [ConfigService],
