@@ -65,7 +65,9 @@ make psql   # psql como app_user no saas_dev
 
 - Variáveis de ambiente em `apps/api/.env` (não commitado); template em `apps/api/.env.example`.
 - Dentro do Docker, os hostnames são `postgres` e `redis`. Fora do Docker, use `localhost`.
-- `NODE_ENV=test` desliga a validação de `STRIPE_*` se necessário para testes locais (ajustar `envSchema` conforme evoluir).
+- `NODE_ENV=test` **não** desliga STRIPE_* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
+
+Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 ---
 
@@ -73,12 +75,12 @@ make psql   # psql como app_user no saas_dev
 
 O `tsconfig.json` do `apps/api` define os seguintes aliases — use-os, nunca caminhos relativos longos:
 
-| Alias | Aponta para |
-|---|---|
-| `@modules/*` | `src/modules/*` |
-| `@common/*` | `src/common/*` |
-| `@database/*` | `src/database/*` |
-| `@config/*` | `src/config/*` |
+| Alias                   | Aponta para           |
+| ----------------------- | --------------------- |
+| `@modules/*`            | `src/modules/*`       |
+| `@common/*`             | `src/common/*`        |
+| `@database/*`           | `src/database/*`      |
+| `@config/*`             | `src/config/*`        |
 | `@saas-platform/shared` | `packages/shared/src` |
 
 O `tsc-alias` resolve os aliases no build — o passo `nest build && tsc-alias` é obrigatório.
@@ -138,9 +140,34 @@ O Turbo garante que `packages/shared` seja buildado antes de `apps/api` e `apps/
 - **Drizzle é o ORM.** Nunca usar TypeORM, Prisma ou qualquer outro.
 - **`SET LOCAL` sempre dentro de transação explícita.** Nunca `SET SESSION` — em connection pool, vaza o tenant para o próximo request.
 - O método correto é `TenantDbService.withTenantContext(tenantId, async (tx) => { ... })`.
+- `TenantDbService.withoutTenantContext()` é o método correto para operações sem tenant (criar organização, operações de auth). **Nunca usar `DRIZZLE_DB` injetado diretamente para operações tenant-scoped.**
+- `DRIZZLE_DB` token (`@Inject(DRIZZLE_DB)`): apenas para queries cross-tenant administrativas. Para tudo tenant-scoped: `TenantDbService.withTenantContext()`.
 - **Nunca enviar `organization_id` no payload de tasks ou task_comments.** O banco deriva via trigger.
 - Migrations de RLS, policies e triggers são **arquivos SQL manuais** em `src/database/migrations/` — nunca gerados pelo drizzle-kit.
 - A role de banco da aplicação é `app_user` — sem SUPERUSER, sem BYPASSRLS.
+- **Toda tabela tenant-scoped exige `FORCE ROW SECURITY` além de `ENABLE ROW LEVEL SECURITY`.** Sem isso, o owner da tabela bypassa o RLS silenciosamente.
+- Contrato HTTP de tenant: header `X-Organization-Id: <uuid>` obrigatório em toda rota tenant-scoped. `TenantMiddleware` lê esse header e popula `req.organizationId`. `TenantGuard` (M2) valida que o usuário pertence à organização.
+- **GUC de tenant**: `app.current_tenant_id` — este é o nome exato do parâmetro PostgreSQL usado nas RLS policies (`current_setting('app.current_tenant_id', true)`). Definido via `set_config('app.current_tenant_id', tenantId, true)` pelo `TenantDbService`.
+
+### Schema Drizzle (`src/database/schema/`)
+
+Arquivos por domínio (não por módulo NestJS):
+
+| Arquivo            | Tabelas                                                        |
+| ------------------ | -------------------------------------------------------------- |
+| `users.ts`         | `users`                                                        |
+| `organizations.ts` | `organizations`, `organization_members`, `invitations`         |
+| `projects.ts`      | `projects`                                                     |
+| `tasks.ts`         | `tasks`, `task_comments`                                       |
+| `billing.ts`       | `billing_subscriptions`                                        |
+| `auth.ts`          | `refresh_tokens`, `processed_webhook_events`                   |
+| `relations.ts`     | Todas as relações Drizzle (sem DDL)                            |
+| `index.ts`         | Re-exporta tudo — sempre importe de `@database/schema`         |
+
+Notas de design:
+- `tasks.organization_id` e `task_comments.organization_id` existem no schema Drizzle mas são **somente leitura** — preenchidos por trigger, nunca inseridos via aplicação.
+- `billing_subscriptions` tem `organization_id` com `.unique()` — garante 1 subscription por organização no nível de banco.
+- `processed_webhook_events` fica em `auth.ts` (junto com `refresh_tokens`) — ambos são tabelas de controle de sessão/idempotência sem RLS.
 
 ### Módulos NestJS
 
@@ -166,6 +193,13 @@ O Turbo garante que `packages/shared` seja buildado antes de `apps/api` e `apps/
 - Testes de integração usam banco real (PostgreSQL rodando via Docker) — nunca mock de banco.
 - O teste mais crítico do projeto: token da org A não acessa dados da org B em nenhum endpoint.
 - Arquivos de teste de integração: `*.integration.spec.ts`
+
+#### Variáveis de ambiente para testes de integração
+
+```
+DATABASE_URL=postgresql://app_user:dev_password@localhost:5432/saas_dev      # app_user — NOSUPERUSER NOBYPASSRLS
+DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5432/saas_dev    # superuser — usado apenas em beforeAll/afterAll para setup do schema de teste
+```
 
 ### Logs
 
@@ -199,7 +233,7 @@ Erro ao atingir limite:
 ## Milestones e estado atual
 
 ```
-M1 — Fundação          [ ] Em andamento
+M1 — Fundação          [ ] Em andamento (PR 1.5 - Schema Completo)
 M2 — Auth              [ ] Pendente
 M3 — Core Tenant       [ ] Pendente
 M4 — Core do Produto   [ ] Pendente
@@ -209,10 +243,14 @@ M7 — Frontend          [ ] Pendente
 ```
 
 **Atualize este bloco manualmente conforme os milestones forem concluídos.**
-Marque `[x]` quando o milestone estiver completo e anote o PR atual abaixo:
+Marque `[x]` quando o milestone estiver completo.
+
+M1 concluído até agora:
+- PRs 1.1–1.5: monorepo, Docker, Makefile, Drizzle + DatabaseModule, TenantDbService (withTenantContext/withoutTenantContext), TenantMiddleware, schema completo (users, orgs, projects, tasks, billing, auth).
+- Migrations SQL ainda vazias — RLS/policies/triggers pendentes.
 
 ```
-PR atual: 1.4 - Drizzle Setup + Conexão com Tenant Context
+PR atual: próximo — M1 restante: migrations RLS + seed ou início M2 (Auth)
 ```
 
 ---
