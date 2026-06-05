@@ -249,10 +249,12 @@ Marque `[x]` quando o milestone estiver completo.
 M1 concluído até agora:
 
 - PRs 1.1–1.5: monorepo, Docker, Makefile, Drizzle + DatabaseModule, TenantDbService (withTenantContext/withoutTenantContext), TenantMiddleware, schema completo (users, orgs, projects, tasks, billing, auth).
-- Migrations SQL ainda vazias — RLS/policies/triggers pendentes.
+- PR 1.6: Migrations SQL manuais (`0001_rls_and_triggers.sql`) — RLS, FORCE ROW LEVEL SECURITY, policies, triggers (organization_id derivado em tasks/task_comments), indexes de performance.
+- PR 1.7: CI/CD GitHub Actions (lint/typecheck, test-api com PostgreSQL+Redis reais, build). Jest separado: unitário (`jest.config.ts`) e integração (`jest.integration.config.ts`, 30s timeout).
+- PR 1.8: Seed realista e idempotente — 14 usuários, 3 orgs, billing, 16 memberships, 16 projetos, ~300 tasks, ~150 comments. `pnpm seed` na raiz.
 
 ```
-PR atual: 1.7 - GitHub Actions CI
+PR atual: M1 completo — próximo: M2 Auth
 ```
 
 ---
