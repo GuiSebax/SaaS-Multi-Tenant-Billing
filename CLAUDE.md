@@ -40,14 +40,17 @@ make up                                  # sobe PostgreSQL + Redis via Docker
 pnpm dev          # inicia api (porta 3001) + web (porta 3000) em paralelo via Turbo
 pnpm build        # build de todos os packages e apps (respeita ordem de dependência)
 pnpm lint         # lint em todos os workspaces
-pnpm test         # testes em todos os workspaces
+pnpm typecheck    # typecheck em todos os workspaces (sem emit)
+pnpm test         # testes unitários em todos os workspaces
+pnpm seed         # popula o banco com dados realistas (14 usuários, 3 orgs, ~300 tasks)
 ```
 
 ### Filtros por app/package
 
 ```bash
 pnpm --filter @saas-platform/api dev
-pnpm --filter @saas-platform/api test
+pnpm --filter @saas-platform/api test                          # unitários (*.spec.ts, exclui *.integration.spec.ts)
+pnpm --filter @saas-platform/api test:integration              # integração com banco real (*.integration.spec.ts, timeout 30s)
 pnpm --filter @saas-platform/api test -- --testPathPattern=auth
 pnpm --filter @saas-platform/web dev
 ```
@@ -68,6 +71,43 @@ make psql   # psql como app_user no saas_dev
 - `NODE_ENV=test` **não** desliga STRIPE\_\* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
 
 Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+
+---
+
+## Migrações SQL manuais
+
+`MigrationRunnerService` roda automaticamente no `onModuleInit` quando `DATABASE_ADMIN_URL` está definido. Ele executa arquivos `.sql` (excluindo `.down.sql`) de `src/database/migrations/` em ordem alfabética, controlando quais já foram aplicados via tabela `_migrations` (criada pelo próprio serviço usando a conexão admin).
+
+Dois tipos de migração convivem no projeto:
+- **drizzle-kit push** — aplica o schema Drizzle (DDL: `CREATE TABLE`, tipos, etc.) como superuser. Usado no CI e no setup inicial.
+- **SQL manuais** (`0001_rls_and_triggers.sql`) — RLS, `FORCE ROW SECURITY`, policies, triggers, indexes. Nunca gerados pelo drizzle-kit; rodados pelo `MigrationRunnerService` (ou manualmente via `psql`).
+
+Downgrade: `src/database/migrations/0001_rls_and_triggers.down.sql` existe mas não é aplicado automaticamente.
+
+---
+
+## `packages/shared` — exports
+
+Importar via alias `@saas-platform/shared` (nunca `packages/shared/src` diretamente):
+
+- **Types**: `Plan`, `Organization`, `User`, `OrganizationMember`
+- **Constants**: `PLAN_LIMITS` (objeto com `free/pro/enterprise → { members, projects }`), `JWT_ACCESS_TOKEN_EXPIRY` (`'15m'`), `JWT_REFRESH_TOKEN_EXPIRY` (`'7d'`)
+
+---
+
+## Error response shape
+
+Toda exceção é capturada pelo `HttpExceptionFilter` global e normalizada para:
+
+```json
+{
+  "error": "HttpExceptionName | InternalServerError",
+  "message": "...",
+  "statusCode": 400,
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "path": "/api/..."
+}
+```
 
 ---
 
@@ -234,7 +274,7 @@ Erro ao atingir limite:
 ## Milestones e estado atual
 
 ```
-M1 — Fundação          [ ] Em andamento
+M1 — Fundação          [x] Completo
 M2 — Auth              [ ] Pendente
 M3 — Core Tenant       [ ] Pendente
 M4 — Core do Produto   [ ] Pendente

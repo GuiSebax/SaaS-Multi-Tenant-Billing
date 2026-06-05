@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { PG_POOL } from './database.module';
+import { PG_POOL } from './database.tokens';
 
 export type DrizzleTransaction = NodePgDatabase;
 

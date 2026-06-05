@@ -5,9 +5,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { TenantDbService } from './tenant-db.service';
 import { MigrationRunnerService } from './migration-runner.service';
+import { PG_POOL, DRIZZLE_DB } from './database.tokens';
 
-export const PG_POOL = Symbol('PG_POOL');
-export const DRIZZLE_DB = Symbol('DRIZZLE_DB');
+export { PG_POOL, DRIZZLE_DB } from './database.tokens';
 
 @Global()
 @Module({
