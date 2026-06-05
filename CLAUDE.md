@@ -295,7 +295,7 @@ M1 concluído até agora:
 - PR 1.8: Seed realista e idempotente — 14 usuários, 3 orgs, billing, 16 memberships, 16 projetos, ~300 tasks, ~150 comments. `pnpm seed` na raiz.
 
 ```
-PR atual: M2 - 2.1 - POST /auth/register e POST /auth/login
+PR atual: M2 - 2.2 - POST /auth/refresh e POST /auth/logout
 ```
 
 ---
