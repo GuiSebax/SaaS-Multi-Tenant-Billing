@@ -252,7 +252,7 @@ M1 concluído até agora:
 - Migrations SQL ainda vazias — RLS/policies/triggers pendentes.
 
 ```
-PR atual: 1.6 - Migration: RLS, Policies e Triggers
+PR atual: 1.7 - GitHub Actions CI
 ```
 
 ---

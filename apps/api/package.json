@@ -6,9 +6,11 @@
     "build": "nest build && tsc-alias -p tsconfig.build.json",
     "dev": "nest start --watch",
     "lint": "eslint src/",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --config jest.config.ts",
+    "test:watch": "jest --config jest.config.ts --watch",
+    "test:integration": "jest --config jest.integration.config.ts --runInBand",
+    "test:cov": "jest --config jest.config.ts --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
@@ -48,29 +50,5 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.60.1"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "^@modules/(.*)$": "<rootDir>/modules/$1",
-      "^@common/(.*)$": "<rootDir>/common/$1",
-      "^@database/(.*)$": "<rootDir>/database/$1",
-      "^@config/(.*)$": "<rootDir>/config/$1",
-      "^@saas-platform/shared$": "<rootDir>/../../packages/shared/src"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }
