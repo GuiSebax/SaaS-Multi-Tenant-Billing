@@ -79,6 +79,7 @@ Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 char
 `MigrationRunnerService` roda automaticamente no `onModuleInit` quando `DATABASE_ADMIN_URL` está definido. Ele executa arquivos `.sql` (excluindo `.down.sql`) de `src/database/migrations/` em ordem alfabética, controlando quais já foram aplicados via tabela `_migrations` (criada pelo próprio serviço usando a conexão admin).
 
 Dois tipos de migração convivem no projeto:
+
 - **drizzle-kit push** — aplica o schema Drizzle (DDL: `CREATE TABLE`, tipos, etc.) como superuser. Usado no CI e no setup inicial.
 - **SQL manuais** (`0001_rls_and_triggers.sql`) — RLS, `FORCE ROW SECURITY`, policies, triggers, indexes. Nunca gerados pelo drizzle-kit; rodados pelo `MigrationRunnerService` (ou manualmente via `psql`).
 
@@ -275,7 +276,7 @@ Erro ao atingir limite:
 
 ```
 M1 — Fundação          [x] Completo
-M2 — Auth              [ ] Pendente
+M2 — Auth              [ ] Em andamento
 M3 — Core Tenant       [ ] Pendente
 M4 — Core do Produto   [ ] Pendente
 M5 — Billing           [ ] Pendente
@@ -294,7 +295,7 @@ M1 concluído até agora:
 - PR 1.8: Seed realista e idempotente — 14 usuários, 3 orgs, billing, 16 memberships, 16 projetos, ~300 tasks, ~150 comments. `pnpm seed` na raiz.
 
 ```
-PR atual: M1 completo — próximo: M2 Auth
+PR atual: M2 - 2.1 - POST /auth/register e POST /auth/login
 ```
 
 ---
@@ -318,3 +319,11 @@ Se o contexto desta sessão foi perdido (Claude Code reiniciado):
 - Não processar webhooks do Stripe de forma síncrona
 - Não enviar `organization_id` no payload de criação de tasks/task_comments
 - Não usar role superuser na connection string da aplicação
+
+## Rodar o o projeto da api
+
+```
+docker compose up -d
+docker stop saas-multi-tenant-billing-api-1
+cd apps\api && node dist/main.js
+```
