@@ -5,10 +5,10 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDirs": ["./src", "../../packages/shared/src"],
+    "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
-      "@saas-platform/shared": ["../../packages/shared/src"],
+      "@saas-platform/shared": ["../../packages/shared/dist"],
       "@modules/*": ["src/modules/*"],
       "@common/*": ["src/common/*"],
       "@database/*": ["src/database/*"],

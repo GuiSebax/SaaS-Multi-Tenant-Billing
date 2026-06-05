@@ -220,7 +220,9 @@ Notas de design:
 
 ### Autenticação e autorização
 
-- Pipeline de guards em toda rota autenticada: `AuthGuard → TenantGuard → RolesGuard`
+- Pipeline de guards em toda rota autenticada: `JwtAuthGuard → TenantGuard → RolesGuard`
+- `JwtAuthGuard` está registrado como `APP_GUARD` global — **todas as rotas são protegidas por padrão**. Use `@Public()` para opt-out em rotas públicas (register, login, refresh).
+- `@CurrentUser()` — param decorator que extrai `{ userId: string }` do JWT payload já validado. Disponível em qualquer rota autenticada.
 - JWT: access token 15min, refresh token 7 dias com rotation.
 - Ao usar refresh token: invalidar o atual, emitir novo. Se token já invalidado for usado: revogar toda a família.
 
@@ -294,8 +296,13 @@ M1 concluído até agora:
 - PR 1.7: CI/CD GitHub Actions (lint/typecheck, test-api com PostgreSQL+Redis reais, build). Jest separado: unitário (`jest.config.ts`) e integração (`jest.integration.config.ts`, 30s timeout).
 - PR 1.8: Seed realista e idempotente — 14 usuários, 3 orgs, billing, 16 memberships, 16 projetos, ~300 tasks, ~150 comments. `pnpm seed` na raiz.
 
+M2 concluído até agora:
+
+- PR 2.1: `AuthModule` com `POST /auth/register` e `POST /auth/login` — bcrypt, JWT access + refresh token emitidos.
+- PR 2.2: `POST /auth/refresh` (rotation) e `POST /auth/logout` (revogação de família ao detectar roubo). `JwtAuthGuard` global via `APP_GUARD`. Decorators `@Public()` e `@CurrentUser()`.
+
 ```
-PR atual: M2 - 2.2 - POST /auth/refresh e POST /auth/logout
+PR atual: M2 - 2.3 -  AuthGuard Global + Whitelist
 ```
 
 ---
@@ -320,7 +327,7 @@ Se o contexto desta sessão foi perdido (Claude Code reiniciado):
 - Não enviar `organization_id` no payload de criação de tasks/task_comments
 - Não usar role superuser na connection string da aplicação
 
-## Rodar o o projeto da api
+## Rodar o projeto da api
 
 ```
 docker compose up -d
