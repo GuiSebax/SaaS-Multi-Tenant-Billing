@@ -1,12 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, max } from 'drizzle-orm';
 import { TenantDbService } from '@database/tenant-db.service';
-import { organizationMembers, projects, tasks } from '@database/schema';
+import { organizationMembers, projects, taskComments, tasks } from '@database/schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { CommentResponseDto } from './dto/comment-response.dto';
 
 @Injectable()
 export class TasksService {
@@ -129,6 +131,67 @@ export class TasksService {
         .returning();
 
       return updated;
+    });
+  }
+
+  async createComment(
+    organizationId: string,
+    taskId: string,
+    userId: string,
+    dto: CreateCommentDto,
+  ): Promise<CommentResponseDto> {
+    return this.tenantDb.withTenantContext(organizationId, async (db) => {
+      const [task] = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(eq(tasks.id, taskId), eq(tasks.organizationId, organizationId)))
+        .limit(1);
+
+      if (!task) throw new NotFoundException('Task not found');
+
+      // organization_id is intentionally omitted — the DB trigger derives it from task_id.
+      const [comment] = await db
+        .insert(taskComments)
+        .values({
+          taskId,
+          userId,
+          content: dto.content,
+        } as unknown as typeof taskComments.$inferInsert)
+        .returning();
+
+      return comment;
+    });
+  }
+
+  async findCommentsByTask(
+    organizationId: string,
+    taskId: string,
+  ): Promise<CommentResponseDto[]> {
+    return this.tenantDb.withTenantContext(organizationId, (db) =>
+      db
+        .select()
+        .from(taskComments)
+        .where(and(eq(taskComments.taskId, taskId), eq(taskComments.organizationId, organizationId)))
+        .orderBy(asc(taskComments.createdAt)),
+    );
+  }
+
+  async deleteComment(
+    organizationId: string,
+    commentId: string,
+    userId: string,
+  ): Promise<void> {
+    await this.tenantDb.withTenantContext(organizationId, async (db) => {
+      const [comment] = await db
+        .select({ id: taskComments.id, userId: taskComments.userId })
+        .from(taskComments)
+        .where(and(eq(taskComments.id, commentId), eq(taskComments.organizationId, organizationId)))
+        .limit(1);
+
+      if (!comment) throw new NotFoundException('Comment not found');
+      if (comment.userId !== userId) throw new ForbiddenException('Cannot delete another user comment');
+
+      await db.delete(taskComments).where(eq(taskComments.id, commentId));
     });
   }
 

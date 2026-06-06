@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -20,6 +21,8 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { CommentResponseDto } from './dto/comment-response.dto';
 
 @Controller('projects')
 @UseGuards(TenantGuard, RolesGuard)
@@ -76,5 +79,33 @@ export class TasksController {
     @Body() dto: AssignTaskDto,
   ): Promise<TaskResponseDto> {
     return this.tasksService.assign(req.member!.organizationId, taskId, dto);
+  }
+
+  @Get(':taskId/comments')
+  findCommentsByTask(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+  ): Promise<CommentResponseDto[]> {
+    return this.tasksService.findCommentsByTask(req.member!.organizationId, taskId);
+  }
+
+  @Post(':taskId/comments')
+  @HttpCode(HttpStatus.CREATED)
+  createComment(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+    @Body() dto: CreateCommentDto,
+  ): Promise<CommentResponseDto> {
+    return this.tasksService.createComment(req.member!.organizationId, taskId, req.member!.userId, dto);
+  }
+
+  @Delete(':taskId/comments/:commentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteComment(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+  ): Promise<void> {
+    return this.tasksService.deleteComment(req.member!.organizationId, commentId, req.member!.userId);
   }
 }
