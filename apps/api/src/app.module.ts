@@ -14,6 +14,8 @@ import { ProjectsController } from '@modules/projects/projects.controller';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { ProjectTasksController, TasksController } from '@modules/tasks/tasks.controller';
 import { EmailModule } from '@modules/email/email.module';
+import { BillingModule } from '@modules/billing/billing.module';
+import { BillingController } from '@modules/billing/billing.controller';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { TenantMiddleware } from '@common/middleware/tenant.middleware';
 
@@ -35,6 +37,7 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
     ProjectsModule,
     TasksModule,
     EmailModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [
@@ -46,6 +49,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(TenantMiddleware)
-      .forRoutes(OrganizationsController, ProjectsController, ProjectTasksController, TasksController);
+      .forRoutes(OrganizationsController, ProjectsController, ProjectTasksController, TasksController, BillingController);
   }
 }
