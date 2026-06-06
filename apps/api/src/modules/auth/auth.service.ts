@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -203,14 +204,14 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: userId },
+        { sub: userId, jti: randomUUID() },
         {
           secret: this.config.getOrThrow<string>('JWT_SECRET'),
           expiresIn: JWT_ACCESS_TOKEN_EXPIRY,
         },
       ),
       this.jwtService.signAsync(
-        { sub: userId, type: 'refresh' },
+        { sub: userId, type: 'refresh', jti: randomUUID() },
         {
           secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
           expiresIn: JWT_REFRESH_TOKEN_EXPIRY,
