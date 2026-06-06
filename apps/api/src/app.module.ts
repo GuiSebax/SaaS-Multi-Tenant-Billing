@@ -9,6 +9,8 @@ import { DatabaseModule } from '@database/database.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
 import { OrganizationsController } from '@modules/organizations/organizations.controller';
+import { ProjectsModule } from '@modules/projects/projects.module';
+import { ProjectsController } from '@modules/projects/projects.controller';
 import { EmailModule } from '@modules/email/email.module';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { TenantMiddleware } from '@common/middleware/tenant.middleware';
@@ -28,6 +30,7 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
     DatabaseModule,
     AuthModule,
     OrganizationsModule,
+    ProjectsModule,
     EmailModule,
   ],
   controllers: [AppController],
@@ -38,6 +41,6 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(TenantMiddleware).forRoutes(OrganizationsController);
+    consumer.apply(TenantMiddleware).forRoutes(OrganizationsController, ProjectsController);
   }
 }
