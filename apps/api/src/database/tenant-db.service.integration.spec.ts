@@ -41,10 +41,10 @@ describe('TenantDbService — isolamento RLS', () => {
           org_id UUID NOT NULL
         )
       `);
-      await admin.query(`ALTER TABLE ${TEST_TABLE} ENABLE ROW SECURITY`);
+      await admin.query(`ALTER TABLE ${TEST_TABLE} ENABLE ROW LEVEL SECURITY`);
       // FORCE ROW SECURITY garante que o dono da tabela também respeite o RLS
       // (relevante quando app_user for dono das tabelas em produção).
-      await admin.query(`ALTER TABLE ${TEST_TABLE} FORCE ROW SECURITY`);
+      await admin.query(`ALTER TABLE ${TEST_TABLE} FORCE ROW LEVEL SECURITY`);
       await admin.query(`
         CREATE POLICY tenant_isolation ON ${TEST_TABLE}
           USING (org_id::text = current_setting('app.current_tenant_id', true))

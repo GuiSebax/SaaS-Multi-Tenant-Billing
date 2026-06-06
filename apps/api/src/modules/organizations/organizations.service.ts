@@ -103,82 +103,85 @@ export class OrganizationsService {
     invitedBy: string,
     dto: InviteMemberDto,
   ): Promise<InvitationResponseDto> {
-    const { invitation, emailPayload } = await this.tenantDb.withoutTenantContext(async (db) => {
-      const [org] = await db
-        .select({ id: organizations.id, name: organizations.name })
-        .from(organizations)
-        .where(eq(organizations.id, organizationId))
-        .limit(1);
+    const { invitation, emailPayload } = await this.tenantDb.withTenantContext(
+      organizationId,
+      async (db) => {
+        const [org] = await db
+          .select({ id: organizations.id, name: organizations.name })
+          .from(organizations)
+          .where(eq(organizations.id, organizationId))
+          .limit(1);
 
-      if (!org) {
-        throw new NotFoundException('Organization not found');
-      }
+        if (!org) {
+          throw new NotFoundException('Organization not found');
+        }
 
-      const [alreadyMember] = await db
-        .select({ userId: organizationMembers.userId })
-        .from(organizationMembers)
-        .innerJoin(users, eq(users.id, organizationMembers.userId))
-        .where(
-          and(
-            eq(organizationMembers.organizationId, organizationId),
-            eq(users.email, dto.email),
-          ),
-        )
-        .limit(1);
+        const [alreadyMember] = await db
+          .select({ userId: organizationMembers.userId })
+          .from(organizationMembers)
+          .innerJoin(users, eq(users.id, organizationMembers.userId))
+          .where(
+            and(
+              eq(organizationMembers.organizationId, organizationId),
+              eq(users.email, dto.email),
+            ),
+          )
+          .limit(1);
 
-      if (alreadyMember) {
-        throw new ConflictException('User is already a member');
-      }
+        if (alreadyMember) {
+          throw new ConflictException('User is already a member');
+        }
 
-      const [pendingInvite] = await db
-        .select({ id: invitations.id })
-        .from(invitations)
-        .where(
-          and(
-            eq(invitations.organizationId, organizationId),
-            eq(invitations.email, dto.email),
-            isNull(invitations.acceptedAt),
-            gt(invitations.expiresAt, new Date()),
-          ),
-        )
-        .limit(1);
+        const [pendingInvite] = await db
+          .select({ id: invitations.id })
+          .from(invitations)
+          .where(
+            and(
+              eq(invitations.organizationId, organizationId),
+              eq(invitations.email, dto.email),
+              isNull(invitations.acceptedAt),
+              gt(invitations.expiresAt, new Date()),
+            ),
+          )
+          .limit(1);
 
-      if (pendingInvite) {
-        throw new ConflictException('Invitation already pending');
-      }
+        if (pendingInvite) {
+          throw new ConflictException('Invitation already pending');
+        }
 
-      const [inviter] = await db
-        .select({ name: users.name })
-        .from(users)
-        .where(eq(users.id, invitedBy))
-        .limit(1);
+        const [inviter] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, invitedBy))
+          .limit(1);
 
-      const token = randomUUID();
-      const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS);
+        const token = randomUUID();
+        const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS);
 
-      const [newInvitation] = await db
-        .insert(invitations)
-        .values({
-          organizationId,
-          email: dto.email,
-          role: dto.role,
-          token,
-          invitedBy,
-          expiresAt,
-        })
-        .returning();
+        const [newInvitation] = await db
+          .insert(invitations)
+          .values({
+            organizationId,
+            email: dto.email,
+            role: dto.role,
+            token,
+            invitedBy,
+            expiresAt,
+          })
+          .returning();
 
-      return {
-        invitation: newInvitation,
-        emailPayload: {
-          to: dto.email,
-          organizationName: org.name,
-          inviterName: inviter?.name ?? 'A team member',
-          token,
-          role: dto.role,
-        },
-      };
-    });
+        return {
+          invitation: newInvitation,
+          emailPayload: {
+            to: dto.email,
+            organizationName: org.name,
+            inviterName: inviter?.name ?? 'A team member',
+            token,
+            role: dto.role,
+          },
+        };
+      },
+    );
 
     await this.emailQueue.add('send-invitation', emailPayload);
 
@@ -276,8 +279,9 @@ export class OrganizationsService {
   }
 
   async acceptInvitation(token: string, userId: string): Promise<void> {
-    await this.tenantDb.withoutTenantContext(async (db) => {
-      const [invitation] = await db
+    // Step 1: look up invitation by token — SELECT is unrestricted (no tenant context needed).
+    const [invitation] = await this.tenantDb.withoutTenantContext((db) =>
+      db
         .select({
           id: invitations.id,
           organizationId: invitations.organizationId,
@@ -291,12 +295,16 @@ export class OrganizationsService {
             gt(invitations.expiresAt, new Date()),
           ),
         )
-        .limit(1);
+        .limit(1),
+    );
 
-      if (!invitation) {
-        throw new NotFoundException('Invitation not found or expired');
-      }
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
 
+    // Step 2: validate membership and commit acceptance inside tenant context so
+    // the UPDATE on invitations passes the tenant-scoped WITH CHECK policy.
+    await this.tenantDb.withTenantContext(invitation.organizationId, async (db) => {
       const [alreadyMember] = await db
         .select({ userId: organizationMembers.userId })
         .from(organizationMembers)

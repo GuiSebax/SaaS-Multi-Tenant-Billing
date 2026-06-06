@@ -8,6 +8,7 @@ import { validateEnv } from '@config/env.config';
 import { DatabaseModule } from '@database/database.module';
 import { AuthModule } from '@modules/auth/auth.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
+import { OrganizationsController } from '@modules/organizations/organizations.controller';
 import { EmailModule } from '@modules/email/email.module';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { TenantMiddleware } from '@common/middleware/tenant.middleware';
@@ -37,8 +38,6 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // TenantMiddleware populates req.organizationId from X-Organization-Id header.
-    // Apply to tenant-scoped routes as controllers are added (M3+).
-    consumer.apply(TenantMiddleware).forRoutes();
+    consumer.apply(TenantMiddleware).forRoutes(OrganizationsController);
   }
 }
