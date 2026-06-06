@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { validateEnv } from '@config/env.config';
 import { DatabaseModule } from '@database/database.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { OrganizationsModule } from '@modules/organizations/organizations.module';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { TenantMiddleware } from '@common/middleware/tenant.middleware';
 
@@ -17,6 +18,7 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
     }),
     DatabaseModule,
     AuthModule,
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [
