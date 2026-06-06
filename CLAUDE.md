@@ -223,8 +223,11 @@ Notas de design:
 - Pipeline de guards em toda rota autenticada: `JwtAuthGuard → TenantGuard → RolesGuard`
 - `JwtAuthGuard` está registrado como `APP_GUARD` global — **todas as rotas são protegidas por padrão**. Use `@Public()` para opt-out em rotas públicas (register, login, refresh).
 - `@CurrentUser()` — param decorator que extrai `{ userId: string }` do JWT payload já validado. Disponível em qualquer rota autenticada.
+- `TenantGuard` e `RolesGuard` **não são globais** — devem ser aplicados explicitamente com `@UseGuards(TenantGuard, RolesGuard)` nas rotas tenant-scoped. `TenantGuard` verifica membership e popula `req.member: { organizationId, userId, role }`. `RolesGuard` lê o decorator `@RequireRole()`.
+- `@RequireRole('owner', 'admin')` — restringe rota a roles específicos. Sem o decorator, `RolesGuard` deixa passar qualquer membro.
 - JWT: access token 15min, refresh token 7 dias com rotation.
 - Ao usar refresh token: invalidar o atual, emitir novo. Se token já invalidado for usado: revogar toda a família.
+- `TenantMiddleware` está definido em `AppModule` mas atualmente com `.forRoutes()` vazio — deve ser populado com as rotas tenant-scoped conforme os módulos forem adicionados em M3+.
 
 ### Webhooks Stripe
 
@@ -299,10 +302,11 @@ M1 concluído até agora:
 M2 concluído até agora:
 
 - PR 2.1: `AuthModule` com `POST /auth/register` e `POST /auth/login` — bcrypt, JWT access + refresh token emitidos.
-- PR 2.2: `POST /auth/refresh` (rotation) e `POST /auth/logout` (revogação de família ao detectar roubo). `JwtAuthGuard` global via `APP_GUARD`. Decorators `@Public()` e `@CurrentUser()`.
+- PR 2.2: `POST /auth/refresh` (rotation) e `POST /auth/logout` (revogação de família ao detectar roubo).
+- PR 2.3: `JwtAuthGuard` global via `APP_GUARD`. Decorators `@Public()` e `@CurrentUser()`.
 
 ```
-PR atual: M2 - 2.3 -  AuthGuard Global + Whitelist
+PR atual: M2 - 2.4 - TenantGuard + RolesGuard
 ```
 
 ---
