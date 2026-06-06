@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { and, eq, gt, isNull } from 'drizzle-orm';
@@ -15,6 +21,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationResponseDto } from './dto/organization-response.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { InvitationResponseDto } from './dto/invitation-response.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -181,6 +188,91 @@ export class OrganizationsService {
       role: invitation.role,
       expiresAt: invitation.expiresAt,
     };
+  }
+
+  async updateMemberRole(
+    organizationId: string,
+    targetUserId: string,
+    dto: UpdateMemberRoleDto,
+    requestingMember: { userId: string },
+  ): Promise<{ userId: string; role: string }> {
+    return this.tenantDb.withoutTenantContext(async (db) => {
+      const [target] = await db
+        .select({ userId: organizationMembers.userId, role: organizationMembers.role })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, organizationId),
+            eq(organizationMembers.userId, targetUserId),
+          ),
+        )
+        .limit(1);
+
+      if (!target) {
+        throw new NotFoundException('Member not found');
+      }
+
+      if (targetUserId === requestingMember.userId) {
+        throw new BadRequestException('Cannot change your own role');
+      }
+
+      if (target.role === 'owner') {
+        throw new ForbiddenException('Cannot change owner role');
+      }
+
+      const [updated] = await db
+        .update(organizationMembers)
+        .set({ role: dto.role })
+        .where(
+          and(
+            eq(organizationMembers.organizationId, organizationId),
+            eq(organizationMembers.userId, targetUserId),
+          ),
+        )
+        .returning({ userId: organizationMembers.userId, role: organizationMembers.role });
+
+      return updated;
+    });
+  }
+
+  async removeMember(
+    organizationId: string,
+    targetUserId: string,
+    requestingMember: { userId: string },
+  ): Promise<void> {
+    await this.tenantDb.withoutTenantContext(async (db) => {
+      const [target] = await db
+        .select({ userId: organizationMembers.userId, role: organizationMembers.role })
+        .from(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, organizationId),
+            eq(organizationMembers.userId, targetUserId),
+          ),
+        )
+        .limit(1);
+
+      if (!target) {
+        throw new NotFoundException('Member not found');
+      }
+
+      if (target.role === 'owner') {
+        throw new ForbiddenException('Cannot remove owner');
+      }
+
+      if (targetUserId === requestingMember.userId) {
+        throw new BadRequestException('Cannot remove yourself');
+      }
+
+      await db
+        .delete(organizationMembers)
+        .where(
+          and(
+            eq(organizationMembers.organizationId, organizationId),
+            eq(organizationMembers.userId, targetUserId),
+          ),
+        );
+    });
   }
 
   async acceptInvitation(token: string, userId: string): Promise<void> {

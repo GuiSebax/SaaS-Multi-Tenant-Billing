@@ -1,4 +1,17 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { RequireRole } from '@common/decorators/require-role.decorator';
 import { TenantGuard } from '@common/guards/tenant.guard';
@@ -8,6 +21,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationResponseDto } from './dto/organization-response.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { InvitationResponseDto } from './dto/invitation-response.dto';
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -37,6 +51,31 @@ export class OrganizationsController {
     @Body() dto: InviteMemberDto,
   ): Promise<InvitationResponseDto> {
     return this.organizationsService.invite(organizationId, user.userId, dto);
+  }
+
+  @Patch(':id/members/:userId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(TenantGuard, RolesGuard)
+  @RequireRole('owner', 'admin')
+  updateMemberRole(
+    @Param('id') organizationId: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateMemberRoleDto,
+    @Req() req: Request,
+  ): Promise<{ userId: string; role: string }> {
+    return this.organizationsService.updateMemberRole(organizationId, targetUserId, dto, req.member!);
+  }
+
+  @Delete(':id/members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(TenantGuard, RolesGuard)
+  @RequireRole('owner', 'admin')
+  removeMember(
+    @Param('id') organizationId: string,
+    @Param('userId') targetUserId: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    return this.organizationsService.removeMember(organizationId, targetUserId, req.member!);
   }
 }
 

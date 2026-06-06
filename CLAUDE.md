@@ -72,6 +72,8 @@ make psql   # psql como app_user no saas_dev
 
 Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
+Variáveis opcionais: `DATABASE_ADMIN_URL` (migration runner), `PORT` (default 3001), `CORS_ORIGIN` (default http://localhost:3000), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (OAuth — não implementado ainda).
+
 ---
 
 ## Migrações SQL manuais
@@ -210,6 +212,7 @@ Notas de design:
 - `tasks.organization_id` e `task_comments.organization_id` existem no schema Drizzle mas são **somente leitura** — preenchidos por trigger, nunca inseridos via aplicação.
 - `billing_subscriptions` tem `organization_id` com `.unique()` — garante 1 subscription por organização no nível de banco.
 - `processed_webhook_events` fica em `auth.ts` (junto com `refresh_tokens`) — ambos são tabelas de controle de sessão/idempotência sem RLS.
+- `invitations`: expira em 7 dias, `UNIQUE(organization_id, email)` para convites pendentes, campo `accepted_at` marca aceitação. O enum `invitation_role` só tem `'admin' | 'member'` — **não é possível convidar alguém como `'owner'`**.
 
 ### Módulos NestJS
 
@@ -225,9 +228,17 @@ Notas de design:
 - `@CurrentUser()` — param decorator que extrai `{ userId: string }` do JWT payload já validado. Disponível em qualquer rota autenticada.
 - `TenantGuard` e `RolesGuard` **não são globais** — devem ser aplicados explicitamente com `@UseGuards(TenantGuard, RolesGuard)` nas rotas tenant-scoped. `TenantGuard` verifica membership e popula `req.member: { organizationId, userId, role }`. `RolesGuard` lê o decorator `@RequireRole()`.
 - `@RequireRole('owner', 'admin')` — restringe rota a roles específicos. Sem o decorator, `RolesGuard` deixa passar qualquer membro.
-- JWT: access token 15min, refresh token 7 dias com rotation.
+- JWT: access token 15min, refresh token 7 dias com rotation. Access tokens incluem `jti: uuid` (gerado por `crypto.randomUUID()`) para unicidade e rastreabilidade de revogação.
 - Ao usar refresh token: invalidar o atual, emitir novo. Se token já invalidado for usado: revogar toda a família.
-- `TenantMiddleware` está definido em `AppModule` mas atualmente com `.forRoutes()` vazio — deve ser populado com as rotas tenant-scoped conforme os módulos forem adicionados em M3+.
+- `TenantMiddleware` está definido em `AppModule` com `.forRoutes()` **vazio** (dívida técnica ativa). Ao adicionar módulos tenant-scoped em M3+, popular com as rotas correspondentes (ex: `'organizations/:id/*'`, `'projects/*'`).
+
+### EmailModule / BullMQ
+
+- Queue registrada com nome `'email'` (BullMQ via `BullModule.registerQueue`).
+- Job name: `'send-invitation'` — processado por `EmailProcessor` em `modules/email/`.
+- `EmailProcessor` atualmente loga no console; implementar SMTP real no M3+ sem mudar o contrato da queue.
+- Para enfileirar: `@InjectQueue('email')` no service e `this.emailQueue.add('send-invitation', payload)`.
+- O padrão BullMQ se aplica a **todos** os processamentos assíncronos do projeto (emails, webhooks Stripe).
 
 ### Webhooks Stripe
 
@@ -281,8 +292,8 @@ Erro ao atingir limite:
 
 ```
 M1 — Fundação          [x] Completo
-M2 — Auth              [ ] Em andamento
-M3 — Core Tenant       [ ] Pendente
+M2 — Auth              [x] Completo
+M3 — Core Tenant       [ ] Em andamento
 M4 — Core do Produto   [ ] Pendente
 M5 — Billing           [ ] Pendente
 M6 — Observabilidade   [ ] Pendente
@@ -303,10 +314,16 @@ M2 concluído até agora:
 
 - PR 2.1: `AuthModule` com `POST /auth/register` e `POST /auth/login` — bcrypt, JWT access + refresh token emitidos.
 - PR 2.2: `POST /auth/refresh` (rotation) e `POST /auth/logout` (revogação de família ao detectar roubo).
-- PR 2.3: `JwtAuthGuard` global via `APP_GUARD`. Decorators `@Public()` e `@CurrentUser()`.
+- PR 2.3: `JwtAuthGuard` global via `APP_GUARD`. Decorators `@Public()` e `@CurrentUser()`. JWT `jti` (UUID por token) para unicidade. Testes de integração de auth (`auth.integration.spec.ts`).
+
+M3 concluído até agora:
+
+- PR 3.1: `TenantGuard` e `RolesGuard`. Decorators `@RequireRole()`. Augmented `Request` type em `common/types/express-request.d.ts`.
+- PR 3.2: `OrganizationsModule` — `POST /organizations` (create) e `GET /organizations` (list user's orgs). Usa `withoutTenantContext`.
+- PR 3.3: convites de membros — `POST /organizations/:id/invitations` e `POST /invitations/:token/accept`. `EmailModule` com `EmailProcessor` (BullMQ, job `send-invitation`).
 
 ```
-PR atual: M2 - 2.4 - TenantGuard + RolesGuard
+Próximo PR: 3.4 ou M4 — módulo de projetos (src/modules/projects/)
 ```
 
 ---
