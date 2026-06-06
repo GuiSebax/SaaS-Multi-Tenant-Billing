@@ -68,7 +68,7 @@ describe('Auth — integração', () => {
     const res = await registerUser();
 
     expect(res.status).toBe(409);
-    expect(res.body.error).toBe('ConflictException');
+    expect(res.body.error).toBe('Conflict');
   });
 
   // ── 3. register — validação ───────────────────────────────────────────────

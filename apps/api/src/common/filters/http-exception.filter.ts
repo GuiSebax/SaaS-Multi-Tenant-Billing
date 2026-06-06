@@ -11,6 +11,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const statusCode =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    const exceptionBody = (() => {
+      if (!(exception instanceof HttpException)) return null;
+      const res = exception.getResponse();
+      return typeof res === 'object' && res !== null ? (res as Record<string, unknown>) : null;
+    })();
+
     const message = (() => {
       if (!(exception instanceof HttpException)) return 'Internal server error';
       const res = exception.getResponse();
@@ -19,7 +25,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return typeof body.message === 'string' ? body.message : exception.message;
     })();
 
-    const error = exception instanceof HttpException ? exception.name : 'InternalServerError';
+    // Prefer a custom error code in the body (e.g. 'PLAN_LIMIT_REACHED') over the class name.
+    const error = exceptionBody?.error ?? (exception instanceof HttpException ? exception.name : 'InternalServerError');
+
+    // Spread any extra fields from a custom body (resource, limit, current, upgrade_url, …).
+    const { error: _e, message: _m, statusCode: _s, ...extraFields } = exceptionBody ?? {};
 
     response.status(statusCode).json({
       error,
@@ -27,6 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode,
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...extraFields,
     });
   }
 }
