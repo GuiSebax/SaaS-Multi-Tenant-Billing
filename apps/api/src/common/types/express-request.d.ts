@@ -1,5 +1,6 @@
 declare namespace Express {
   interface Request {
+    requestId?: string;
     organizationId?: string;
     user?: { userId: string };
     member?: {

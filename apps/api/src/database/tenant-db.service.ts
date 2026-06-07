@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -8,6 +8,8 @@ export type DrizzleTransaction = NodePgDatabase;
 
 @Injectable()
 export class TenantDbService {
+  private readonly logger = new Logger(TenantDbService.name);
+
   constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async withTenantContext<T>(
@@ -30,10 +32,15 @@ export class TenantDbService {
 
   private async inTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
+    const start = Date.now();
     try {
       await client.query('BEGIN');
       const result = await work(client);
       await client.query('COMMIT');
+      const durationMs = Date.now() - start;
+      if (durationMs > 100) {
+        this.logger.warn(`Slow transaction: ${durationMs}ms`);
+      }
       return result;
     } catch (error) {
       await client.query('ROLLBACK');
