@@ -8,5 +8,6 @@ import { BillingService } from './billing.service';
   imports: [DatabaseModule],
   controllers: [BillingController],
   providers: [stripeProvider, BillingService],
+  exports: [BillingService, stripeProvider],
 })
 export class BillingModule {}

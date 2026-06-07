@@ -16,6 +16,7 @@ import { ProjectTasksController, TasksController } from '@modules/tasks/tasks.co
 import { EmailModule } from '@modules/email/email.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { BillingController } from '@modules/billing/billing.controller';
+import { WebhooksModule } from '@modules/webhooks/webhooks.module';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { TenantMiddleware } from '@common/middleware/tenant.middleware';
 
@@ -38,6 +39,7 @@ import { TenantMiddleware } from '@common/middleware/tenant.middleware';
     TasksModule,
     EmailModule,
     BillingModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [

@@ -70,9 +70,11 @@ make psql   # psql como app_user no saas_dev
 - Dentro do Docker, os hostnames são `postgres` e `redis`. Fora do Docker, use `localhost`.
 - `NODE_ENV=test` **não** desliga STRIPE\_\* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
 
-Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`.
 
-Variáveis opcionais: `DATABASE_ADMIN_URL` (migration runner), `PORT` (default 3001), `CORS_ORIGIN` (default http://localhost:3000), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (OAuth — não implementado ainda).
+Variáveis com default: `FRONTEND_URL` (default `http://localhost:3000`), `PORT` (default 3001), `CORS_ORIGIN` (default `http://localhost:3000`), `NODE_ENV` (default `development`).
+
+Variáveis opcionais: `DATABASE_ADMIN_URL` (migration runner), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (OAuth — não implementado ainda).
 
 ---
 
@@ -240,6 +242,17 @@ Notas de design:
 - Para enfileirar: `@InjectQueue('email')` no service e `this.emailQueue.add('send-invitation', payload)`.
 - O padrão BullMQ se aplica a **todos** os processamentos assíncronos do projeto (emails, webhooks Stripe).
 
+### BillingModule e WebhooksModule
+
+- Endpoints billing: `GET /billing/subscription`, `POST /billing/create-checkout-session`, `POST /billing/create-portal-session`.
+- Endpoint webhook: `POST /webhooks/stripe` — `@Public()`, sem TenantGuard, sem TenantMiddleware.
+- `STRIPE_CLIENT` token injetado via `stripe.provider.ts` — use `@Inject(STRIPE_CLIENT)` para acessar o client Stripe. `BillingModule` exporta `BillingService` e `stripeProvider` para uso no `WebhooksModule`.
+- Convenção `pending_*` no `stripeCustomerId`: novos orgs são criados com `stripeCustomerId = 'pending_<orgId>'`. O Stripe customer real é criado lazily no primeiro checkout. Nunca criar Stripe customer fora do fluxo de checkout.
+- `FRONTEND_URL` é usado para `success_url` e `cancel_url` nas sessions do Stripe — sempre vem do `ConfigService`.
+- Checkout cria subscription com `trial_period_days: 14` por padrão.
+- **Stripe SDK v22 e tipos**: `Stripe.Subscription`, `Stripe.Event` etc. **não existem** no namespace v22. Use tipos derivados do cliente: `type StripeSubscription = Awaited<ReturnType<StripeClient['subscriptions']['retrieve']>>`. Aplicar o mesmo padrão para `Event` (via `constructEvent`) e `CheckoutSession` (via `checkout.sessions.retrieve`).
+- **`current_period_end` removido na API `2026-05-27.dahlia`**: o campo `currentPeriodEnd` da tabela existe mas não é populado pelos webhooks (nullable). Não tentar ler `subscription.current_period_end` — TypeScript vai reclamar e está correto.
+
 ### Webhooks Stripe
 
 - Endpoint **sempre** responde 200 imediatamente após validar assinatura.
@@ -293,9 +306,9 @@ Erro ao atingir limite:
 ```
 M1 — Fundação          [x] Completo
 M2 — Auth              [x] Completo
-M3 — Core Tenant       [ ] Em andamento
-M4 — Core do Produto   [ ] Pendente
-M5 — Billing           [ ] Pendente
+M3 — Core Tenant       [x] Completo
+M4 — Core do Produto   [x] Completo
+M5 — Billing           [x] Completo
 M6 — Observabilidade   [ ] Pendente
 M7 — Frontend          [ ] Pendente
 ```
@@ -321,9 +334,20 @@ M3 concluído até agora:
 - PR 3.1: `TenantGuard` e `RolesGuard`. Decorators `@RequireRole()`. Augmented `Request` type em `common/types/express-request.d.ts`.
 - PR 3.2: `OrganizationsModule` — `POST /organizations` (create) e `GET /organizations` (list user's orgs). Usa `withoutTenantContext`.
 - PR 3.3: convites de membros — `POST /organizations/:id/invitations` e `POST /invitations/:token/accept`. `EmailModule` com `EmailProcessor` (BullMQ, job `send-invitation`).
+- PR 3.4: gestão de membros — `PATCH /organizations/:id/members/:userId` (promover role) e `DELETE /organizations/:id/members/:userId` (remover). Guard chain: `TenantGuard → RolesGuard → @RequireRole('owner','admin')`. Testes de integração de organizations (`organizations.integration.spec.ts`, 13 testes). Fix RLS: migration `0002_fix_invitations_policy.sql` separa SELECT (irrestrito, para aceite por token) de INSERT/UPDATE/DELETE (exige tenant context). `invite()` corrigido para usar `withTenantContext`; `acceptInvitation()` usa SELECT sem contexto + `withTenantContext` para UPDATE+INSERT.
+
+M4 concluído até agora:
+
+- PR 4.1: `ProjectsModule` — CRUD completo com RLS. `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id` (DELETE = archive, retorna 200). Enforcement de limite de plano via `PLAN_LIMITS` do shared: free=3 projetos, pro/enterprise=ilimitado. Erro 403 com body `{ error: 'PLAN_LIMIT_REACHED', resource, limit, current, upgrade_url }`.
+- PR 4.2: `TasksModule` — CRUD completo com RLS e trigger. Dois controllers: `ProjectTasksController` (`GET/POST /projects/:projectId/tasks`) e `TasksController` (`PATCH /tasks/:id`, `PATCH /tasks/:id/move`, `PATCH /tasks/:id/assign`). INSERT não inclui `organization_id` (trigger preenche do `project_id`); workaround TypeScript: `as unknown as typeof tasks.$inferInsert`. `move()` suporta mover task entre projetos da mesma org (RLS valida destino). `assign()` verifica membership via `withoutTenantContext` antes do update. `position` calculada como `MAX(position) + 1` por projeto.
+
+M5 concluído até agora:
+
+- PR 5.1: `BillingModule` — `GET /billing/subscription`, `POST /billing/create-checkout-session`, `POST /billing/create-portal-session`. Stripe customer criado lazily no primeiro checkout (convenção `pending_*`). Trial de 14 dias.
+- PR 5.2: `WebhooksModule` — `POST /webhooks/stripe` (raw body, validação de assinatura, enfileira em `stripe-webhooks`). `StripeWebhookProcessor` trata `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`. Idempotência via `processed_webhook_events`. `main.ts` com `bodyParser: false` + `raw()` para `/api/webhooks/stripe` + `json()` global.
 
 ```
-Próximo PR: 3.4 ou M4 — módulo de projetos (src/modules/projects/)
+PR atual: próximo milestone
 ```
 
 ---

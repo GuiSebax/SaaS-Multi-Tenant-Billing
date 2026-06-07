@@ -1,14 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { json, raw } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
   });
+
+  // raw body for Stripe signature validation — must come before json()
+  app.use('/api/webhooks/stripe', raw({ type: 'application/json' }));
+  app.use(json());
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
