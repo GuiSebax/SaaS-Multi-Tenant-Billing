@@ -309,8 +309,8 @@ M2 — Auth              [x] Completo
 M3 — Core Tenant       [x] Completo
 M4 — Core do Produto   [x] Completo
 M5 — Billing           [x] Completo
-M6 — Observabilidade   [ ] Pendente
-M7 — Frontend          [ ] Pendente
+M6 — Observabilidade   [x] Completo
+M7 — Frontend          [ ] Em andamento
 ```
 
 **Atualize este bloco manualmente conforme os milestones forem concluídos.**
@@ -346,11 +346,13 @@ M5 concluído até agora:
 - PR 5.1: `BillingModule` — `GET /billing/subscription`, `POST /billing/create-checkout-session`, `POST /billing/create-portal-session`. Stripe customer criado lazily no primeiro checkout (convenção `pending_*`). Trial de 14 dias.
 - PR 5.2: `WebhooksModule` — `POST /webhooks/stripe` (raw body, validação de assinatura, enfileira em `stripe-webhooks`). `StripeWebhookProcessor` trata `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`. Idempotência via `processed_webhook_events`. `main.ts` com `bodyParser: false` + `raw()` para `/api/webhooks/stripe` + `json()` global.
 
-```
-PR atual: próximo milestone
-```
+M6 concluído até agora:
+
+- PR 6.1: Observabilidade completa — `JsonLoggerService` (implementa `LoggerService`, JSON estruturado no stdout), `RequestIdMiddleware` (UUID por request via header `X-Request-Id` ou gerado), `LoggingInterceptor` (APP_INTERCEPTOR global, loga `{timestamp, level, request_id, tenant_id, user_id, method, path, status, duration_ms, query_count}`). Prometheus via `@willsoto/nestjs-prometheus` em `GET /api/metrics` (`http_request_duration_ms`, `plan_limit_reached_total`, `webhook_processing_duration_ms`, `bullmq_job_failed_total`). `HealthModule` em `GET /api/health` com checks reais de PostgreSQL e Redis (`{status, timestamp, services}`). Slow query log no `TenantDbService.inTransaction` (warn se > 100ms). `JwtAuthGuard` bypass para `/api/metrics`. Métricas criadas com `getSingleMetric` fallback para evitar conflito de registro entre suites de teste.
 
 ---
+
+PR atual: 7.1 — Setup Next.js
 
 ## Como retomar uma sessão interrompida
 
