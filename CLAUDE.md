@@ -291,19 +291,19 @@ DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5432/saas_dev    # s
 
 Paleta de cores (use estes valores — não inventar outros):
 
-| Elemento            | Valor                                   |
-| ------------------- | --------------------------------------- |
-| Background raiz     | `#0A0A0B`                               |
-| Card/superfície     | `#111113` + borda `rgba(255,255,255,0.06)` |
-| Input background    | `#0A0A0B` + borda `white/[0.08]`        |
-| Input focus border  | `indigo-500/60`                         |
-| Botão primário      | `bg-indigo-500 hover:bg-indigo-600`     |
-| Texto principal     | `white`                                 |
-| Texto muted         | `zinc-400`                              |
-| Texto sutil         | `zinc-500`                              |
-| Placeholder         | `zinc-600`                              |
-| Erro                | `red-400`                               |
-| Link                | `indigo-400 hover:indigo-300`           |
+| Elemento           | Valor                                      |
+| ------------------ | ------------------------------------------ |
+| Background raiz    | `#0A0A0B`                                  |
+| Card/superfície    | `#111113` + borda `rgba(255,255,255,0.06)` |
+| Input background   | `#0A0A0B` + borda `white/[0.08]`           |
+| Input focus border | `indigo-500/60`                            |
+| Botão primário     | `bg-indigo-500 hover:bg-indigo-600`        |
+| Texto principal    | `white`                                    |
+| Texto muted        | `zinc-400`                                 |
+| Texto sutil        | `zinc-500`                                 |
+| Placeholder        | `zinc-600`                                 |
+| Erro               | `red-400`                                  |
+| Link               | `indigo-400 hover:indigo-300`              |
 
 Componentes de UI compartilhados ficam em `apps/web/components/`. Por enquanto existe:
 
@@ -311,6 +311,7 @@ Componentes de UI compartilhados ficam em `apps/web/components/`. Por enquanto e
 
 Bibliotecas em uso no frontend:
 
+- `@tanstack/react-query` — data fetching; todos os hooks usam `useQuery`/`useMutation`. `QueryClientProvider` está em `app/providers.tsx` com `staleTime: 60s` global. Ao trocar de organização (`switchOrg`), `queryClient.clear()` descarta todo o cache.
 - `react-hook-form` + `@hookform/resolvers/zod` + `zod` — formulários com validação; padrão obrigatório para todo form.
 - `framer-motion` — animações de entrada (ex: `AuthCard`).
 - `sonner` — toasts; importar `{ toast }` de `sonner`.
@@ -326,15 +327,16 @@ Bibliotecas em uso no frontend:
 
 #### Token storage (`apps/web/lib/auth.ts`)
 
-- Tokens armazenados em `localStorage` (keys: `access_token`, `refresh_token`).
-- Funções disponíveis: `getAccessToken()`, `setTokens(access, refresh)`, `clearTokens()`, `isAuthenticated()`.
-- `getAccessToken()` e `isAuthenticated()` retornam `null`/`false` em SSR (guard `typeof window === 'undefined'`).
+- Tokens armazenados em `localStorage` (keys: `access_token`, `refresh_token`, `current_user`).
+- Funções disponíveis: `getAccessToken()`, `getRefreshToken()`, `setTokens(access, refresh)`, `setUser({ name, email })`, `getUser()`, `clearTokens()`, `isAuthenticated()`.
+- `clearTokens()` também remove `current_user` e `current_organization_id` — reseta toda a sessão.
+- Todas as funções de leitura retornam `null`/`false` em SSR (guard `typeof window === 'undefined'`).
 
 #### Convenções de rota (web)
 
 - Auth: `app/auth/login`, `app/auth/register` — layout em `app/auth/layout.tsx` (fundo `#0A0A0B`, logo centralizada, children centralizados).
-- Dashboard: `app/(dashboard)/` — route group (ainda não implementado).
-- Marketing: `app/(marketing)/` — route group (ainda não implementado).
+- Dashboard: `app/(dashboard)/` — route group implementado: `/dashboard`, `/projects`, `/projects/[id]`, `/organizations`, `/settings/billing`. Layout com sidebar fixa 240px + header breadcrumb.
+- Marketing: `app/(marketing)/` — route group (stub; apenas `/pricing` existe).
 
 ---
 
@@ -413,8 +415,9 @@ M7 em andamento:
 
 - PR 7.1: Next.js setup — Geist font, shadcn/ui, axios instance (`@/lib/axios`), token storage (`@/lib/auth`), `PlanLimitErrorResponse` em `@saas-platform/shared`, estrutura de rotas (`app/auth/`, `app/(dashboard)/`, `app/(marketing)/`).
 - PR 7.2: Páginas de auth — design system "Precision Dark" (fundo `#0A0A0B`, cards `#111113`, primário indigo-500). `AuthCard` com framer-motion. `/auth/login` e `/auth/register` com react-hook-form + zod + sonner. Interceptor axios: 401 → redirect login, 403 PLAN_LIMIT_REACHED → toast com ação upgrade.
+- PR 7.3: Dashboard completo — layout com sidebar fixa 240px (`#111113`), workspace switcher (dropdown click-outside), nav com active state (indigo border-l-2 + bg), breadcrumb dinâmico, footer com avatar + logout. Páginas: `/dashboard` (stats cards + recent projects via `useQueries` paralelo), `/projects` (grid stagger +50ms, sheet new project, tooltip plan limit), `/projects/[id]` (kanban 3 colunas, inline task creation), `/organizations` (switch + sheet new org, auto-slug), `/settings/billing` (upgrade card ou manage portal). Hooks em `hooks/`: `useOrganization`, `useProjects`, `useProject`, `useCreateProject`, `useTasks`, `useCreateTask`. Componentes em `components/`: `PlanBadge` (free/pro/enterprise), `StatusDot`, `EmptyState`, `SkeletonCard`, `Sheet` (framer-motion drawer). Axios interceptor inclui `X-Organization-Id` do localStorage. `lib/auth.ts` agora exporta `setUser/getUser` para exibir nome no sidebar.
 
-PR atual: 7.2 (em revisão).
+PR atual: 7.3 (em revisão).
 
 ## Como retomar uma sessão interrompida
 

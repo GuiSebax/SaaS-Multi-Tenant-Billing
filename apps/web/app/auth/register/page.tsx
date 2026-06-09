@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { AuthCard } from '@/components/auth/auth-card';
 import api from '@/lib/axios';
-import { setTokens } from '@/lib/auth';
+import { setTokens, setUser } from '@/lib/auth';
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -52,6 +52,7 @@ export default function RegisterPage() {
         data,
       );
       setTokens(res.data.accessToken, res.data.refreshToken);
+      setUser({ name: data.name, email: data.email });
       router.push('/dashboard');
     } catch (err) {
       if (axios.isAxiosError(err)) {

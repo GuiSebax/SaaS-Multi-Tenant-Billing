@@ -13,6 +13,12 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (typeof window !== 'undefined') {
+    const orgId = localStorage.getItem('current_organization_id');
+    if (orgId) {
+      config.headers['X-Organization-Id'] = orgId;
+    }
+  }
   return config;
 });
 
@@ -20,7 +26,6 @@ api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     if (typeof window === 'undefined') return Promise.reject(error);
-
     if (!axios.isAxiosError(error)) return Promise.reject(error);
 
     if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth/')) {
