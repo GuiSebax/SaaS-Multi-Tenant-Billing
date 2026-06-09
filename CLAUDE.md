@@ -64,6 +64,14 @@ make logs   # docker compose logs -f
 make psql   # psql como app_user no saas_dev
 ```
 
+### Rodar a API compilada (sem watch)
+
+```bash
+docker compose up -d
+docker stop saas-multi-tenant-billing-api-1
+cd apps/api && node dist/main.js
+```
+
 ### Notas de ambiente
 
 - Variáveis de ambiente em `apps/api/.env` (não commitado); template em `apps/api/.env.example`.
@@ -73,6 +81,8 @@ make psql   # psql como app_user no saas_dev
 Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`.
 
 Variáveis com default: `FRONTEND_URL` (default `http://localhost:3000`), `PORT` (default 3001), `CORS_ORIGIN` (default `http://localhost:3000`), `NODE_ENV` (default `development`).
+
+Web app (`apps/web/.env.local`): `NEXT_PUBLIC_API_URL` (default `http://localhost:3001/api`).
 
 Variáveis opcionais: `DATABASE_ADMIN_URL` (migration runner), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (OAuth — não implementado ainda).
 
@@ -277,6 +287,55 @@ DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5432/saas_dev    # s
 - Todo log deve ter `request_id`, `tenant_id`, `user_id` em formato JSON estruturado.
 - Queries > 100ms: logar SQL anonimizado + duração.
 
+### Frontend (M7) — Design system "Precision Dark"
+
+Paleta de cores (use estes valores — não inventar outros):
+
+| Elemento            | Valor                                   |
+| ------------------- | --------------------------------------- |
+| Background raiz     | `#0A0A0B`                               |
+| Card/superfície     | `#111113` + borda `rgba(255,255,255,0.06)` |
+| Input background    | `#0A0A0B` + borda `white/[0.08]`        |
+| Input focus border  | `indigo-500/60`                         |
+| Botão primário      | `bg-indigo-500 hover:bg-indigo-600`     |
+| Texto principal     | `white`                                 |
+| Texto muted         | `zinc-400`                              |
+| Texto sutil         | `zinc-500`                              |
+| Placeholder         | `zinc-600`                              |
+| Erro                | `red-400`                               |
+| Link                | `indigo-400 hover:indigo-300`           |
+
+Componentes de UI compartilhados ficam em `apps/web/components/`. Por enquanto existe:
+
+- `components/auth/auth-card.tsx` — wrapper com motion entry animation (`framer-motion`) para páginas de auth.
+
+Bibliotecas em uso no frontend:
+
+- `react-hook-form` + `@hookform/resolvers/zod` + `zod` — formulários com validação; padrão obrigatório para todo form.
+- `framer-motion` — animações de entrada (ex: `AuthCard`).
+- `sonner` — toasts; importar `{ toast }` de `sonner`.
+- `lucide-react` — ícones.
+- `axios` — cliente HTTP (ver abaixo).
+
+#### API client (`apps/web/lib/axios.ts`)
+
+- Instância `api` (export default) com `baseURL = NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'`.
+- Interceptor de request injeta `Authorization: Bearer <token>` do `localStorage`.
+- Interceptor de response: 401 fora de `/auth/*` → limpa tokens e redireciona para `/auth/login`; 403 com `PLAN_LIMIT_REACHED` → toast de upgrade automático.
+- **Sempre importar `api` de `@/lib/axios`** — nunca criar instâncias axios avulsas.
+
+#### Token storage (`apps/web/lib/auth.ts`)
+
+- Tokens armazenados em `localStorage` (keys: `access_token`, `refresh_token`).
+- Funções disponíveis: `getAccessToken()`, `setTokens(access, refresh)`, `clearTokens()`, `isAuthenticated()`.
+- `getAccessToken()` e `isAuthenticated()` retornam `null`/`false` em SSR (guard `typeof window === 'undefined'`).
+
+#### Convenções de rota (web)
+
+- Auth: `app/auth/login`, `app/auth/register` — layout em `app/auth/layout.tsx` (fundo `#0A0A0B`, logo centralizada, children centralizados).
+- Dashboard: `app/(dashboard)/` — route group (ainda não implementado).
+- Marketing: `app/(marketing)/` — route group (ainda não implementado).
+
 ---
 
 ## Planos e limites
@@ -350,9 +409,12 @@ M6 concluído até agora:
 
 - PR 6.1: Observabilidade completa — `JsonLoggerService` (implementa `LoggerService`, JSON estruturado no stdout), `RequestIdMiddleware` (UUID por request via header `X-Request-Id` ou gerado), `LoggingInterceptor` (APP_INTERCEPTOR global, loga `{timestamp, level, request_id, tenant_id, user_id, method, path, status, duration_ms, query_count}`). Prometheus via `@willsoto/nestjs-prometheus` em `GET /api/metrics` (`http_request_duration_ms`, `plan_limit_reached_total`, `webhook_processing_duration_ms`, `bullmq_job_failed_total`). `HealthModule` em `GET /api/health` com checks reais de PostgreSQL e Redis (`{status, timestamp, services}`). Slow query log no `TenantDbService.inTransaction` (warn se > 100ms). `JwtAuthGuard` bypass para `/api/metrics`. Métricas criadas com `getSingleMetric` fallback para evitar conflito de registro entre suites de teste.
 
----
+M7 em andamento:
 
-PR atual: 7.1 — Setup Next.js
+- PR 7.1: Next.js setup — Geist font, shadcn/ui, axios instance (`@/lib/axios`), token storage (`@/lib/auth`), `PlanLimitErrorResponse` em `@saas-platform/shared`, estrutura de rotas (`app/auth/`, `app/(dashboard)/`, `app/(marketing)/`).
+- PR 7.2: Páginas de auth — design system "Precision Dark" (fundo `#0A0A0B`, cards `#111113`, primário indigo-500). `AuthCard` com framer-motion. `/auth/login` e `/auth/register` com react-hook-form + zod + sonner. Interceptor axios: 401 → redirect login, 403 PLAN_LIMIT_REACHED → toast com ação upgrade.
+
+PR atual: 7.2 (em revisão).
 
 ## Como retomar uma sessão interrompida
 
@@ -370,14 +432,6 @@ Se o contexto desta sessão foi perdido (Claude Code reiniciado):
 - Não gerar migrations com drizzle-kit para RLS/triggers/policies
 - Não organizar código por camada técnica (controllers/, services/ na raiz)
 - Não mockar o banco em testes de integração
-- Não processar webhooks do Stripe de forma síncrona
+- Não processar webhooks do Stripe de forma síncrono
 - Não enviar `organization_id` no payload de criação de tasks/task_comments
 - Não usar role superuser na connection string da aplicação
-
-## Rodar o projeto da api
-
-```
-docker compose up -d
-docker stop saas-multi-tenant-billing-api-1
-cd apps\api && node dist/main.js
-```

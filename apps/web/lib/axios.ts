@@ -23,7 +23,7 @@ api.interceptors.response.use(
 
     if (!axios.isAxiosError(error)) return Promise.reject(error);
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth/')) {
       clearTokens();
       window.location.href = '/auth/login';
       return Promise.reject(error);
