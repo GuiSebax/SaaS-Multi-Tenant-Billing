@@ -38,7 +38,7 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-            className="absolute right-0 top-0 bottom-0 w-[420px] flex flex-col"
+            className="absolute right-0 top-0 bottom-0 w-full sm:w-[420px] flex flex-col"
             style={{ background: '#111113', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div

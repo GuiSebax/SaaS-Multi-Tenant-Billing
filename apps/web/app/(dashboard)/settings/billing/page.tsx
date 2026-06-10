@@ -4,11 +4,12 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { CreditCard, Sparkles, Check, ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { PlanBadge } from '@/components/plan-badge';
 import { SkeletonCard } from '@/components/skeleton-card';
-import type { BillingSubscription } from '@saas-platform/shared';
+import { useProjects } from '@/hooks/use-projects';
+import { PLAN_LIMITS } from '@saas-platform/shared';
+import type { BillingSubscription, Plan } from '@saas-platform/shared';
 
 const PRO_FEATURES = [
   'Up to 25 team members',
@@ -18,6 +19,12 @@ const PRO_FEATURES = [
   'Custom integrations',
 ];
 
+const FREE_FEATURES = [
+  'Up to 3 projects',
+  'Up to 3 team members',
+  'Community support',
+];
+
 const STATUS_STYLES: Record<string, string> = {
   active: 'bg-green-500/10 text-green-400 border border-green-500/20',
   trialing: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20',
@@ -25,9 +32,38 @@ const STATUS_STYLES: Record<string, string> = {
   canceled: 'bg-zinc-800 text-zinc-400 border border-white/[0.06]',
 };
 
-export default function BillingSettingsPage() {
-  const router = useRouter();
+function UsageBar({ label, current, limit }: { label: string; current: number; limit: number | null }) {
+  const pct = limit ? Math.min(100, Math.round((current / limit) * 100)) : 0;
+  const isUnlimited = limit === null;
 
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-zinc-400">{label}</span>
+        <span className="text-xs font-mono text-zinc-500">
+          {current}
+          {isUnlimited ? ' / ∞' : ` / ${limit}`}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        {!isUnlimited && (
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${pct}%`,
+              background: pct >= 90 ? '#f87171' : '#6366f1',
+            }}
+          />
+        )}
+        {isUnlimited && (
+          <div className="h-full w-full rounded-full" style={{ background: 'rgba(99,102,241,0.3)' }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function BillingSettingsPage() {
   const { data: subscription, isLoading } = useQuery({
     queryKey: ['billing', 'subscription'],
     queryFn: async () => {
@@ -35,6 +71,8 @@ export default function BillingSettingsPage() {
       return res.data;
     },
   });
+
+  const { data: projects = [] } = useProjects();
 
   const checkout = useMutation({
     mutationFn: async () => {
@@ -58,11 +96,14 @@ export default function BillingSettingsPage() {
     onError: () => toast.error('Failed to open billing portal. Please try again.'),
   });
 
-  const plan = subscription?.plan ?? 'free';
+  const plan = (subscription?.plan ?? 'free') as Plan;
   const isPaid = plan === 'pro' || plan === 'enterprise';
+  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const projectLimit = PLAN_LIMITS[plan].projects;
+  const memberLimit = PLAN_LIMITS[plan].members;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-base font-semibold text-white">Billing</h1>
         <p className="text-xs text-zinc-500 mt-0.5">Manage your plan and subscription</p>
@@ -76,12 +117,12 @@ export default function BillingSettingsPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="rounded-xl p-5"
+          className="rounded-xl p-8"
           style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-2">
                 <CreditCard size={14} className="text-zinc-400" />
                 <span className="text-xs text-zinc-400 font-medium">Current Plan</span>
               </div>
@@ -106,8 +147,21 @@ export default function BillingSettingsPage() {
             )}
           </div>
 
+          {/* Plan features */}
+          <ul className="space-y-2 mb-5">
+            {(isPaid ? PRO_FEATURES : FREE_FEATURES).map((feature) => (
+              <li key={feature} className="flex items-center gap-2 text-xs text-zinc-400">
+                <Check size={12} className={isPaid ? 'text-indigo-400' : 'text-zinc-600'} />
+                {feature}
+              </li>
+            ))}
+          </ul>
+
           {isPaid ? (
-            <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div
+              className="flex items-center justify-between pt-5"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+            >
               <p className="text-xs text-zinc-500">
                 Manage payment method, invoices, and cancel subscription.
               </p>
@@ -125,10 +179,45 @@ export default function BillingSettingsPage() {
               </button>
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              You are on the free plan. Upgrade to Pro to unlock more features.
-            </p>
+            <div className="pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-xs text-zinc-500 mb-3">
+                You are on the free plan. Upgrade to Pro to unlock more capacity and features.
+              </p>
+              <button
+                onClick={() => checkout.mutate()}
+                disabled={checkout.isPending}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white text-xs font-medium transition-colors duration-150"
+              >
+                {checkout.isPending ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                Upgrade to Pro
+              </button>
+            </div>
           )}
+        </motion.div>
+      )}
+
+      {/* Usage */}
+      {!isLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, delay: 0.05 }}
+          className="rounded-xl p-6"
+          style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <h2 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">Usage</h2>
+          <div className="space-y-4">
+            <UsageBar
+              label="Projects"
+              current={activeProjects}
+              limit={projectLimit === Infinity ? null : projectLimit}
+            />
+            <UsageBar
+              label="Team Members"
+              current={1}
+              limit={memberLimit === Infinity ? null : memberLimit}
+            />
+          </div>
         </motion.div>
       )}
 
@@ -137,14 +226,14 @@ export default function BillingSettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.05 }}
-          className="rounded-xl p-5"
+          transition={{ duration: 0.2, delay: 0.1 }}
+          className="rounded-xl p-8"
           style={{
             background: 'rgba(99,102,241,0.06)',
             border: '1px solid rgba(99,102,241,0.2)',
           }}
         >
-          <div className="flex items-start gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-5">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'rgba(99,102,241,0.15)' }}
@@ -159,7 +248,7 @@ export default function BillingSettingsPage() {
             </div>
           </div>
 
-          <ul className="space-y-2 mb-5">
+          <ul className="space-y-2 mb-6">
             {PRO_FEATURES.map((feature) => (
               <li key={feature} className="flex items-center gap-2 text-xs text-zinc-300">
                 <Check size={12} className="text-indigo-400 flex-shrink-0" />

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { SidebarContext, useSidebar } from './sidebar-context';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -12,6 +13,8 @@ import {
   Building2,
   Check,
   Plus,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clearTokens, getUser } from '@/lib/auth';
@@ -46,6 +49,7 @@ function useBreadcrumbs() {
 function WorkspaceSwitcher() {
   const router = useRouter();
   const { currentOrg, organizations, switchOrg } = useOrganization();
+  const { close: closeSidebar } = useSidebar();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -72,8 +76,8 @@ function WorkspaceSwitcher() {
         style={{ border: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
-          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold text-indigo-400 flex-shrink-0"
-          style={{ background: 'rgba(99,102,241,0.15)' }}
+          className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold text-indigo-300 flex-shrink-0"
+          style={{ background: 'rgba(55,48,163,0.6)' }}
         >
           {currentOrg.name[0].toUpperCase()}
         </div>
@@ -91,7 +95,7 @@ function WorkspaceSwitcher() {
 
       {open && (
         <div
-          className="absolute left-3 right-3 top-full mt-1 rounded-lg overflow-hidden z-50 py-1"
+          className="absolute left-3 right-3 top-full mt-1 rounded-lg overflow-hidden z-60 py-1"
           style={{ background: '#1A1A1D', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           {organizations.map((org) => (
@@ -100,12 +104,13 @@ function WorkspaceSwitcher() {
               onClick={() => {
                 switchOrg(org.id);
                 setOpen(false);
+                closeSidebar();
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/[0.04] transition-colors duration-150"
             >
               <div
-                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold text-indigo-400 flex-shrink-0"
-                style={{ background: 'rgba(99,102,241,0.15)' }}
+                className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold text-indigo-300 flex-shrink-0"
+                style={{ background: 'rgba(55,48,163,0.6)' }}
               >
                 {org.name[0].toUpperCase()}
               </div>
@@ -119,6 +124,7 @@ function WorkspaceSwitcher() {
             <button
               onClick={() => {
                 setOpen(false);
+                closeSidebar();
                 router.push('/organizations');
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors duration-150"
@@ -133,7 +139,7 @@ function WorkspaceSwitcher() {
   );
 }
 
-function Sidebar() {
+function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const user = getUser();
@@ -145,7 +151,11 @@ function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 bottom-0 flex flex-col z-40"
+      className={cn(
+        'fixed left-0 top-0 bottom-0 flex flex-col z-50 transition-transform duration-300 ease-in-out',
+        'md:translate-x-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+      )}
       style={{
         width: 240,
         background: '#111113',
@@ -153,18 +163,30 @@ function Sidebar() {
       }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 h-14 flex-shrink-0">
-        <div
-          className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-          style={{ background: '#6366F1' }}
-        >
-          <Building2 size={12} className="text-white" />
+      <div className="flex items-center justify-between px-5 h-14 flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+            style={{ background: '#6366F1' }}
+          >
+            <Building2 size={12} className="text-white" />
+          </div>
+          <span className="text-sm font-semibold text-white">SaaS Platform</span>
         </div>
-        <span className="text-sm font-semibold text-white">SaaS Platform</span>
+        <button
+          onClick={onClose}
+          className="md:hidden text-zinc-500 hover:text-white transition-colors"
+          aria-label="Close sidebar"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {/* Workspace Switcher */}
       <WorkspaceSwitcher />
+
+      {/* Separator */}
+      <div className="mx-3 mb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
@@ -176,15 +198,16 @@ function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
-                'flex items-center gap-3 py-2 rounded-lg text-sm transition-all duration-150 border-l-2',
+                'flex items-center gap-2.5 py-2 rounded-lg text-sm transition-all duration-150 border-l-2',
                 isActive
                   ? 'text-white border-indigo-500 pl-[10px] pr-3'
                   : 'text-zinc-400 hover:text-zinc-200 border-transparent px-3 hover:bg-[rgba(255,255,255,0.04)]',
               )}
               style={isActive ? { background: 'rgba(99,102,241,0.12)' } : undefined}
             >
-              <Icon size={15} />
+              <Icon size={16} />
               {label}
             </Link>
           );
@@ -198,8 +221,8 @@ function Sidebar() {
       >
         <div className="flex items-center gap-2.5 px-2">
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-400 flex-shrink-0"
-            style={{ background: 'rgba(99,102,241,0.15)' }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-300 flex-shrink-0"
+            style={{ background: 'rgba(55,48,163,0.6)' }}
           >
             {user?.name?.[0]?.toUpperCase() ?? 'U'}
           </div>
@@ -222,7 +245,7 @@ function Sidebar() {
   );
 }
 
-function Header() {
+function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const breadcrumbs = useBreadcrumbs();
 
   return (
@@ -230,6 +253,13 @@ function Header() {
       className="h-14 flex items-center px-6 flex-shrink-0"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
+      <button
+        onClick={onMenuClick}
+        className="md:hidden mr-4 text-zinc-400 hover:text-white transition-colors"
+        aria-label="Open menu"
+      >
+        <Menu size={18} />
+      </button>
       <nav className="flex items-center gap-1.5 text-xs">
         {breadcrumbs.map((crumb, i) => (
           <span key={crumb.href} className="flex items-center gap-1.5">
@@ -252,13 +282,29 @@ function Header() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const closeSidebar = () => setMobileOpen(false);
+
   return (
-    <div className="min-h-screen" style={{ background: '#0A0A0B' }}>
-      <Sidebar />
-      <div style={{ marginLeft: 240 }} className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 p-6">{children}</main>
+    <SidebarContext.Provider value={{ close: closeSidebar }}>
+      <div className="min-h-screen" style={{ background: '#0A0A0B' }}>
+        {/* Mobile overlay */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-40 md:hidden"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
+            onClick={closeSidebar}
+          />
+        )}
+
+        <Sidebar mobileOpen={mobileOpen} onClose={closeSidebar} />
+
+        <div className="flex flex-col min-h-screen md:ml-[240px]">
+          <Header onMenuClick={() => setMobileOpen(true)} />
+          <main className="flex-1 p-8">{children}</main>
+        </div>
       </div>
-    </div>
+    </SidebarContext.Provider>
   );
 }

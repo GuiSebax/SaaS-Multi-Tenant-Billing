@@ -5,12 +5,11 @@ import { useQueries } from '@tanstack/react-query';
 import { FolderKanban, CheckCircle2, Clock, ListTodo, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useProjects } from '@/hooks/use-projects';
-import { SkeletonCard } from '@/components/skeleton-card';
+import { SkeletonCard, SkeletonLine } from '@/components/skeleton-card';
 import { StatusDot } from '@/components/status-dot';
 import { EmptyState } from '@/components/empty-state';
 import api from '@/lib/axios';
 import type { Task } from '@saas-platform/shared';
-
 
 interface StatCardProps {
   label: string;
@@ -26,22 +25,17 @@ function StatCard({ label, value, icon: Icon, loading, index }: StatCardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.2 }}
-      className="rounded-xl p-5"
+      className="rounded-xl p-5 min-h-[100px] flex flex-col justify-between"
       style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs text-zinc-500">{label}</span>
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: 'rgba(99,102,241,0.1)' }}
-        >
-          <Icon size={14} className="text-indigo-400" />
-        </div>
+      <div className="flex items-start justify-between">
+        <span className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{label}</span>
+        <Icon size={20} className="text-zinc-700 flex-shrink-0" />
       </div>
       {loading ? (
-        <div className="h-7 w-12 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <SkeletonLine width="w-16" height="h-9" />
       ) : (
-        <p className="text-2xl font-semibold text-white font-mono">{value}</p>
+        <p className="text-4xl font-bold text-white font-mono">{value}</p>
       )}
     </motion.div>
   );
@@ -77,7 +71,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 w-full">
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
@@ -87,7 +81,7 @@ export default function DashboardPage() {
 
       {/* Recent Projects */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-white">Recent Projects</h2>
           <Link
             href="/projects"
@@ -98,7 +92,7 @@ export default function DashboardPage() {
         </div>
 
         {projectsLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -118,29 +112,23 @@ export default function DashboardPage() {
             }
           />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {recentProjects.map((project, i) => {
               const projectTasks = taskQueries[i]?.data ?? [];
               const taskCount = projectTasks.length;
               return (
                 <motion.div
                   key={project.id}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05, duration: 0.2 }}
                 >
                   <Link
                     href={`/projects/${project.id}`}
-                    className="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-150 group"
+                    className="group flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-150 hover:bg-white/[0.03]"
                     style={{
                       background: '#111113',
                       border: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
                     }}
                   >
                     <div
@@ -159,11 +147,11 @@ export default function DashboardPage() {
                       <span className="text-xs text-zinc-600 font-mono">
                         {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
                       </span>
-                      <StatusDot status={project.status} />
+                      <StatusDot status={project.status} showLabel={false} />
                     </div>
                     <ArrowRight
                       size={14}
-                      className="text-zinc-700 group-hover:text-zinc-400 transition-colors duration-150 flex-shrink-0"
+                      className="text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0"
                     />
                   </Link>
                 </motion.div>

@@ -14,10 +14,10 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
         className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
         style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <Icon size={20} className="text-zinc-500" />
+        <Icon size={24} className="text-zinc-500" />
       </div>
-      <h3 className="text-sm font-medium text-white mb-1">{title}</h3>
-      <p className="text-xs text-zinc-500 max-w-[260px] leading-relaxed">{description}</p>
+      <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
+      <p className="text-sm text-zinc-400 max-w-[280px] leading-relaxed">{description}</p>
       {action && <div className="mt-6">{action}</div>}
     </div>
   );

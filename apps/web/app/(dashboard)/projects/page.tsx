@@ -10,6 +10,7 @@ import { Plus, FolderKanban, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjects, useCreateProject } from '@/hooks/use-projects';
 import { useOrganization } from '@/hooks/use-organization';
+import { useSidebar } from '../sidebar-context';
 import { StatusDot } from '@/components/status-dot';
 import { SkeletonCard } from '@/components/skeleton-card';
 import { EmptyState } from '@/components/empty-state';
@@ -31,11 +32,19 @@ type FormData = z.infer<typeof schema>;
 const inputClass =
   'w-full rounded-lg bg-[#0A0A0B] border border-white/[0.08] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/60 transition-colors';
 
+function projectColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) & 0xffff;
+  }
+  return `hsl(${hash % 360}, 55%, 42%)`;
+}
 
 export default function ProjectsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data: projects = [], isLoading } = useProjects();
   const { currentOrg } = useOrganization();
+  const { close: closeSidebar } = useSidebar();
   const createProject = useCreateProject();
 
   const plan = ((currentOrg as unknown as { plan?: Plan })?.plan ?? 'free') as Plan;
@@ -52,6 +61,7 @@ export default function ProjectsPage() {
 
   function handleOpen() {
     if (atLimit) return;
+    closeSidebar();
     reset();
     setSheetOpen(true);
   }
@@ -68,7 +78,7 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <div className="max-w-4xl space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-white">Projects</h1>
@@ -100,7 +110,7 @@ export default function ProjectsPage() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
             {Array.from({ length: 4 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -121,52 +131,63 @@ export default function ProjectsPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {projects.map((project, i) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.2 }}
-              >
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="block rounded-xl p-5 transition-all duration-150 group"
-                  style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                  }}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            {projects.map((project, i) => {
+              const color = projectColor(project.name);
+              return (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-indigo-400"
-                      style={{ background: 'rgba(99,102,241,0.1)' }}
-                    >
-                      {project.name[0].toUpperCase()}
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="flex flex-col rounded-xl p-6 transition-all duration-200 group hover:-translate-y-px"
+                    style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
+                    }}
+                  >
+                    {/* Card header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                        style={{ background: color }}
+                      >
+                        {project.name[0].toUpperCase()}
+                      </div>
+                      <StatusDot status={project.status} />
                     </div>
-                    <StatusDot status={project.status} />
-                  </div>
-                  <h3 className="text-sm font-semibold text-white mb-1 truncate">{project.name}</h3>
-                  {project.description ? (
-                    <p className="text-xs text-zinc-500 line-clamp-2 mb-4">{project.description}</p>
-                  ) : (
-                    <p className="text-xs text-zinc-700 mb-4 italic">No description</p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-600 font-mono">
-                      {new Date(project.createdAt).toLocaleDateString()}
-                    </span>
-                    <ArrowRight
-                      size={13}
-                      className="text-zinc-700 group-hover:text-zinc-400 transition-colors duration-150"
-                    />
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+
+                    {/* Card body */}
+                    <h3 className="text-base font-semibold text-white mb-1 truncate">{project.name}</h3>
+                    {project.description ? (
+                      <p className="text-sm text-zinc-400 line-clamp-2 leading-relaxed">{project.description}</p>
+                    ) : (
+                      <p className="text-sm text-zinc-700 italic">No description</p>
+                    )}
+
+                    {/* Card footer */}
+                    <div
+                      className="flex items-center justify-between mt-auto pt-3"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px' }}
+                    >
+                      <span className="text-xs text-zinc-600 font-mono">
+                        {new Date(project.createdAt).toLocaleDateString()}
+                      </span>
+                      <ArrowRight
+                        size={13}
+                        className="text-zinc-700 group-hover:text-zinc-400 transition-colors duration-150"
+                      />
+                    </div>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/empty-state';
 import { SkeletonCard } from '@/components/skeleton-card';
 import { Sheet } from '@/components/ui/sheet';
 import { useOrganization } from '@/hooks/use-organization';
+import { useSidebar } from '../sidebar-context';
 import type { OrgWithRole } from '@/lib/types';
 import type { Plan } from '@saas-platform/shared';
 
@@ -50,6 +51,7 @@ export default function OrganizationsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { currentOrg, switchOrg } = useOrganization();
+  const { close: closeSidebar } = useSidebar();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const { data: organizations = [], isLoading } = useQuery({
@@ -92,6 +94,7 @@ export default function OrganizationsPage() {
   }
 
   function handleOpen() {
+    closeSidebar();
     reset();
     setSheetOpen(true);
   }
@@ -103,7 +106,7 @@ export default function OrganizationsPage() {
 
   return (
     <>
-      <div className="max-w-3xl space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-white">Organizations</h1>

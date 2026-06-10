@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { use } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, FolderKanban, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,12 +17,6 @@ const COLUMNS: { label: string; status: TaskStatus }[] = [
   { label: 'Done', status: 'done' },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  todo: 'rgba(96,165,250,0.1)',
-  in_progress: 'rgba(234,179,8,0.1)',
-  done: 'rgba(34,197,94,0.1)',
-};
-
 const inputClass =
   'w-full rounded-lg bg-[#0A0A0B] border border-white/[0.08] px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/60 transition-colors';
 
@@ -33,8 +26,8 @@ function TaskCard({ task, index }: { task: Task; index: number }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.18 }}
-      className="rounded-lg p-3"
-      style={{ background: '#0A0A0B', border: '1px solid rgba(255,255,255,0.06)' }}
+      className="rounded-lg px-4 py-3 border border-white/[0.08] hover:border-white/[0.14] transition-colors duration-200"
+      style={{ background: '#1C1C1F' }}
     >
       <p className="text-sm text-white leading-snug mb-2">{task.title}</p>
       {task.description && (
@@ -122,25 +115,28 @@ function KanbanColumn({ label, status, tasks, projectId, isLoading }: KanbanColu
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex flex-col min-w-[280px] w-full max-w-sm">
+    <div
+      className="flex flex-col flex-1 min-w-[280px] rounded-lg"
+      style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
+    >
       {/* Column Header */}
       <div
-        className="flex items-center justify-between px-3 py-2.5 rounded-t-xl"
-        style={{
-          background: STATUS_COLORS[status] ?? 'rgba(255,255,255,0.03)',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-        }}
+        className="flex items-center justify-between px-4 py-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div className="flex items-center gap-2">
           <StatusDot status={status} showLabel={false} />
           <span className="text-xs font-semibold text-white">{label}</span>
-          <span className="text-[10px] text-zinc-500 font-mono">{tasks.length}</span>
+          <span
+            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-mono font-medium text-zinc-500"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+          >
+            {tasks.length}
+          </span>
         </div>
         <button
           onClick={() => setAdding(true)}
-          className="text-zinc-500 hover:text-white transition-colors duration-150"
+          className="text-zinc-600 hover:text-zinc-300 transition-colors duration-150"
           aria-label={`Add task to ${label}`}
         >
           <Plus size={14} />
@@ -148,15 +144,7 @@ function KanbanColumn({ label, status, tasks, projectId, isLoading }: KanbanColu
       </div>
 
       {/* Column Body */}
-      <div
-        className="flex-1 flex flex-col gap-2 p-3 rounded-b-xl min-h-[200px]"
-        style={{
-          background: 'rgba(255,255,255,0.01)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
+      <div className="flex-1 flex flex-col gap-2 p-3 min-h-[200px]">
         {isLoading ? (
           <>
             <SkeletonCard />
@@ -176,27 +164,26 @@ function KanbanColumn({ label, status, tasks, projectId, isLoading }: KanbanColu
         {adding && (
           <NewTaskInline status={status} projectId={projectId} onDone={() => setAdding(false)} />
         )}
+      </div>
 
-        {!adding && (
+      {/* New Task footer button */}
+      {!adding && (
+        <div className="px-3 pb-3">
           <button
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.04] transition-colors duration-150 mt-auto"
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] border border-dashed border-white/[0.08] hover:border-white/[0.14] transition-all duration-150"
           >
             <Plus size={12} />
-            Add task
+            New Task
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default function ProjectBoardPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: projectId } = use(params);
+export default function ProjectBoardPage({ params }: { params: { id: string } }) {
+  const { id: projectId } = params;
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: tasks = [], isLoading: tasksLoading } = useTasks(projectId);
 
@@ -238,7 +225,7 @@ export default function ProjectBoardPage({
         )}
       </div>
 
-      {/* Kanban Board */}
+      {/* Kanban Board — horizontal scroll on mobile */}
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map(({ label, status }) => (
           <KanbanColumn
