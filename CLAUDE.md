@@ -242,7 +242,7 @@ Notas de design:
 - `@RequireRole('owner', 'admin')` — restringe rota a roles específicos. Sem o decorator, `RolesGuard` deixa passar qualquer membro.
 - JWT: access token 15min, refresh token 7 dias com rotation. Access tokens incluem `jti: uuid` (gerado por `crypto.randomUUID()`) para unicidade e rastreabilidade de revogação.
 - Ao usar refresh token: invalidar o atual, emitir novo. Se token já invalidado for usado: revogar toda a família.
-- `TenantMiddleware` está definido em `AppModule` com `.forRoutes()` **vazio** (dívida técnica ativa). Ao adicionar módulos tenant-scoped em M3+, popular com as rotas correspondentes (ex: `'organizations/:id/*'`, `'projects/*'`).
+- `TenantMiddleware` está registrado em `AppModule` via `.forRoutes(OrganizationsController, ProjectsController, ProjectTasksController, TasksController, BillingController)` — cobre todas as rotas tenant-scoped atuais. Ao adicionar novos controllers tenant-scoped, adicionar ao `.forRoutes()` correspondente.
 
 ### EmailModule / BullMQ
 
@@ -334,6 +334,7 @@ Bibliotecas em uso no frontend:
 
 #### Convenções de rota (web)
 
+- Landing: `app/page.tsx` — página de marketing completa (Navbar, Hero, Logos, Features, Pricing inline, CTA, Footer) fora de qualquer route group.
 - Auth: `app/auth/login`, `app/auth/register` — layout em `app/auth/layout.tsx` (fundo `#0A0A0B`, logo centralizada, children centralizados).
 - Dashboard: `app/(dashboard)/` — route group implementado: `/dashboard`, `/projects`, `/projects/[id]`, `/organizations`, `/settings/billing`. Layout com sidebar fixa 240px + header breadcrumb.
 - Marketing: `app/(marketing)/` — route group (stub; apenas `/pricing` existe).
@@ -371,7 +372,7 @@ M3 — Core Tenant       [x] Completo
 M4 — Core do Produto   [x] Completo
 M5 — Billing           [x] Completo
 M6 — Observabilidade   [x] Completo
-M7 — Frontend          [ ] Em andamento
+M7 — Frontend          [x] Completo
 ```
 
 **Atualize este bloco manualmente conforme os milestones forem concluídos.**
@@ -400,7 +401,7 @@ M3 concluído até agora:
 M4 concluído até agora:
 
 - PR 4.1: `ProjectsModule` — CRUD completo com RLS. `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id` (DELETE = archive, retorna 200). Enforcement de limite de plano via `PLAN_LIMITS` do shared: free=3 projetos, pro/enterprise=ilimitado. Erro 403 com body `{ error: 'PLAN_LIMIT_REACHED', resource, limit, current, upgrade_url }`.
-- PR 4.2: `TasksModule` — CRUD completo com RLS e trigger. Dois controllers: `ProjectTasksController` (`GET/POST /projects/:projectId/tasks`) e `TasksController` (`PATCH /tasks/:id`, `PATCH /tasks/:id/move`, `PATCH /tasks/:id/assign`). INSERT não inclui `organization_id` (trigger preenche do `project_id`); workaround TypeScript: `as unknown as typeof tasks.$inferInsert`. `move()` suporta mover task entre projetos da mesma org (RLS valida destino). `assign()` verifica membership via `withoutTenantContext` antes do update. `position` calculada como `MAX(position) + 1` por projeto.
+- PR 4.2: `TasksModule` — CRUD completo com RLS e trigger. Dois controllers: `ProjectTasksController` (`GET/POST /projects/:projectId/tasks`) e `TasksController` (`PATCH /tasks/:id`, `PATCH /tasks/:id/move`, `PATCH /tasks/:id/assign`, `GET/POST /tasks/:taskId/comments`, `DELETE /tasks/:taskId/comments/:commentId`). INSERT não inclui `organization_id` (trigger preenche do `project_id`); workaround TypeScript: `as unknown as typeof tasks.$inferInsert`. `move()` suporta mover task entre projetos da mesma org (RLS valida destino). `assign()` verifica membership via `withoutTenantContext` antes do update. `position` calculada como `MAX(position) + 1` por projeto.
 
 M5 concluído até agora:
 
@@ -417,7 +418,7 @@ M7 em andamento:
 - PR 7.2: Páginas de auth — design system "Precision Dark" (fundo `#0A0A0B`, cards `#111113`, primário indigo-500). `AuthCard` com framer-motion. `/auth/login` e `/auth/register` com react-hook-form + zod + sonner. Interceptor axios: 401 → redirect login, 403 PLAN_LIMIT_REACHED → toast com ação upgrade.
 - PR 7.3: Dashboard completo — layout com sidebar fixa 240px (`#111113`), workspace switcher (dropdown click-outside), nav com active state (indigo border-l-2 + bg), breadcrumb dinâmico, footer com avatar + logout. Páginas: `/dashboard` (stats cards + recent projects via `useQueries` paralelo), `/projects` (grid stagger +50ms, sheet new project, tooltip plan limit), `/projects/[id]` (kanban 3 colunas, inline task creation), `/organizations` (switch + sheet new org, auto-slug), `/settings/billing` (upgrade card ou manage portal). Hooks em `hooks/`: `useOrganization`, `useProjects`, `useProject`, `useCreateProject`, `useTasks`, `useCreateTask`. Componentes em `components/`: `PlanBadge` (free/pro/enterprise), `StatusDot`, `EmptyState`, `SkeletonCard`, `Sheet` (framer-motion drawer). Axios interceptor inclui `X-Organization-Id` do localStorage. `lib/auth.ts` agora exporta `setUser/getUser` para exibir nome no sidebar.
 
-PR atual: 7.3 (em revisão).
+PR atual: Etapa 8 — Produto real
 
 ## Como retomar uma sessão interrompida
 
