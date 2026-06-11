@@ -22,6 +22,7 @@ import { OrganizationResponseDto } from './dto/organization-response.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { InvitationResponseDto } from './dto/invitation-response.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { MemberResponseDto } from './dto/member-response.dto';
 
 @Controller('organizations')
 export class OrganizationsController {
@@ -39,6 +40,12 @@ export class OrganizationsController {
   @Get('mine')
   findAllByUser(@CurrentUser() user: { userId: string }): Promise<OrganizationResponseDto[]> {
     return this.organizationsService.findAllByUser(user.userId);
+  }
+
+  @Get(':id/members')
+  @UseGuards(TenantGuard, RolesGuard)
+  findMembers(@Param('id') organizationId: string): Promise<MemberResponseDto[]> {
+    return this.organizationsService.findMembers(organizationId);
   }
 
   @Post(':id/invitations')

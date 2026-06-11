@@ -1,12 +1,13 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, max } from 'drizzle-orm';
 import { TenantDbService } from '@database/tenant-db.service';
-import { organizationMembers, projects, taskComments, tasks } from '@database/schema';
+import { organizationMembers, projects, taskComments, tasks, users } from '@database/schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
+import { TaskDetailResponseDto } from './dto/task-detail-response.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommentResponseDto } from './dto/comment-response.dto';
 
@@ -49,6 +50,50 @@ export class TasksService {
         .returning();
 
       return task;
+    });
+  }
+
+  async findOne(organizationId: string, taskId: string): Promise<TaskDetailResponseDto> {
+    return this.tenantDb.withTenantContext(organizationId, async (db) => {
+      const [row] = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          status: tasks.status,
+          position: tasks.position,
+          projectId: tasks.projectId,
+          organizationId: tasks.organizationId,
+          assigneeId: tasks.assigneeId,
+          createdBy: tasks.createdBy,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+          assigneeName: users.name,
+          assigneeEmail: users.email,
+        })
+        .from(tasks)
+        .leftJoin(users, eq(tasks.assigneeId, users.id))
+        .where(and(eq(tasks.id, taskId), eq(tasks.organizationId, organizationId)))
+        .limit(1);
+
+      if (!row) throw new NotFoundException('Task not found');
+
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        status: row.status,
+        position: row.position,
+        projectId: row.projectId,
+        organizationId: row.organizationId,
+        assigneeId: row.assigneeId,
+        createdBy: row.createdBy,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        assignee: row.assigneeId
+          ? { id: row.assigneeId, name: row.assigneeName!, email: row.assigneeEmail! }
+          : null,
+      };
     });
   }
 
@@ -97,6 +142,22 @@ export class TasksService {
         .returning();
 
       return updated;
+    });
+  }
+
+  async deleteTask(organizationId: string, taskId: string): Promise<void> {
+    await this.tenantDb.withTenantContext(organizationId, async (db) => {
+      const [existing] = await db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(eq(tasks.id, taskId), eq(tasks.organizationId, organizationId)))
+        .limit(1);
+
+      if (!existing) throw new NotFoundException('Task not found');
+
+      await db
+        .delete(tasks)
+        .where(and(eq(tasks.id, taskId), eq(tasks.organizationId, organizationId)));
     });
   }
 
@@ -159,7 +220,7 @@ export class TasksService {
         } as unknown as typeof taskComments.$inferInsert)
         .returning();
 
-      return comment;
+      return { ...comment, authorName: null };
     });
   }
 
@@ -169,9 +230,23 @@ export class TasksService {
   ): Promise<CommentResponseDto[]> {
     return this.tenantDb.withTenantContext(organizationId, (db) =>
       db
-        .select()
+        .select({
+          id: taskComments.id,
+          content: taskComments.content,
+          taskId: taskComments.taskId,
+          organizationId: taskComments.organizationId,
+          userId: taskComments.userId,
+          authorName: users.name,
+          createdAt: taskComments.createdAt,
+        })
         .from(taskComments)
-        .where(and(eq(taskComments.taskId, taskId), eq(taskComments.organizationId, organizationId)))
+        .leftJoin(users, eq(taskComments.userId, users.id))
+        .where(
+          and(
+            eq(taskComments.taskId, taskId),
+            eq(taskComments.organizationId, organizationId),
+          ),
+        )
         .orderBy(asc(taskComments.createdAt)),
     );
   }

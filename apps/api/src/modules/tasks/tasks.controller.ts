@@ -21,6 +21,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
+import { TaskDetailResponseDto } from './dto/task-detail-response.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CommentResponseDto } from './dto/comment-response.dto';
 
@@ -54,6 +55,43 @@ export class ProjectTasksController {
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
+  // Specific paths before generic :id to avoid routing conflicts
+  @Get(':taskId/comments')
+  findCommentsByTask(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+  ): Promise<CommentResponseDto[]> {
+    return this.tasksService.findCommentsByTask(req.member!.organizationId, taskId);
+  }
+
+  @Post(':taskId/comments')
+  @HttpCode(HttpStatus.CREATED)
+  createComment(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+    @Body() dto: CreateCommentDto,
+  ): Promise<CommentResponseDto> {
+    return this.tasksService.createComment(req.member!.organizationId, taskId, req.member!.userId, dto);
+  }
+
+  @Delete(':taskId/comments/:commentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteComment(
+    @Req() req: Request,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+  ): Promise<void> {
+    return this.tasksService.deleteComment(req.member!.organizationId, commentId, req.member!.userId);
+  }
+
+  @Get(':id')
+  findOne(
+    @Req() req: Request,
+    @Param('id') taskId: string,
+  ): Promise<TaskDetailResponseDto> {
+    return this.tasksService.findOne(req.member!.organizationId, taskId);
+  }
+
   @Patch(':id')
   update(
     @Req() req: Request,
@@ -81,31 +119,12 @@ export class TasksController {
     return this.tasksService.assign(req.member!.organizationId, taskId, dto);
   }
 
-  @Get(':taskId/comments')
-  findCommentsByTask(
-    @Req() req: Request,
-    @Param('taskId') taskId: string,
-  ): Promise<CommentResponseDto[]> {
-    return this.tasksService.findCommentsByTask(req.member!.organizationId, taskId);
-  }
-
-  @Post(':taskId/comments')
-  @HttpCode(HttpStatus.CREATED)
-  createComment(
-    @Req() req: Request,
-    @Param('taskId') taskId: string,
-    @Body() dto: CreateCommentDto,
-  ): Promise<CommentResponseDto> {
-    return this.tasksService.createComment(req.member!.organizationId, taskId, req.member!.userId, dto);
-  }
-
-  @Delete(':taskId/comments/:commentId')
+  @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteComment(
+  deleteTask(
     @Req() req: Request,
-    @Param('taskId') taskId: string,
-    @Param('commentId') commentId: string,
+    @Param('id') taskId: string,
   ): Promise<void> {
-    return this.tasksService.deleteComment(req.member!.organizationId, commentId, req.member!.userId);
+    return this.tasksService.deleteTask(req.member!.organizationId, taskId);
   }
 }

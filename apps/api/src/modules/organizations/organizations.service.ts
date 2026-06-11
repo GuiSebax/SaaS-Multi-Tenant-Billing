@@ -22,6 +22,7 @@ import { OrganizationResponseDto } from './dto/organization-response.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { InvitationResponseDto } from './dto/invitation-response.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { MemberResponseDto } from './dto/member-response.dto';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -276,6 +277,21 @@ export class OrganizationsService {
           ),
         );
     });
+  }
+
+  async findMembers(organizationId: string): Promise<MemberResponseDto[]> {
+    return this.tenantDb.withoutTenantContext((db) =>
+      db
+        .select({
+          userId: organizationMembers.userId,
+          role: organizationMembers.role,
+          name: users.name,
+          email: users.email,
+        })
+        .from(organizationMembers)
+        .innerJoin(users, eq(organizationMembers.userId, users.id))
+        .where(eq(organizationMembers.organizationId, organizationId)),
+    );
   }
 
   async acceptInvitation(token: string, userId: string): Promise<void> {

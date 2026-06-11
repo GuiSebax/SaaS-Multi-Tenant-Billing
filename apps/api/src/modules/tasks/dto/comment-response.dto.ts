@@ -4,5 +4,6 @@ export class CommentResponseDto {
   taskId!: string;
   organizationId!: string;
   userId!: string;
+  authorName!: string | null;
   createdAt!: Date;
 }

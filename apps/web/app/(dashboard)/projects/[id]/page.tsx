@@ -27,7 +27,9 @@ import { Plus, FolderKanban, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProject } from '@/hooks/use-projects';
 import { useTasks, useCreateTask, useUpdateTask, useMoveTask } from '@/hooks/use-tasks';
+import { useOrganization } from '@/hooks/use-organization';
 import { StatusDot } from '@/components/status-dot';
+import { TaskDetailDialog } from '@/components/task-detail-dialog';
 import { SkeletonCard } from '@/components/skeleton-card';
 import { EmptyState } from '@/components/empty-state';
 import type { Task, TaskStatus } from '@saas-platform/shared';
@@ -72,7 +74,7 @@ function TaskCardContent({ task }: { task: Task }) {
 
 // ─── Sortable task card ──────────────────────────────────────────────────────
 
-function SortableTaskCard({ task, index }: { task: Task; index: number }) {
+function SortableTaskCard({ task, index, onClick }: { task: Task; index: number; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
   });
@@ -89,6 +91,7 @@ function SortableTaskCard({ task, index }: { task: Task; index: number }) {
       }}
       {...attributes}
       {...listeners}
+      onClick={onClick}
     >
       <motion.div
         initial={{ opacity: 0, y: 6 }}
@@ -187,6 +190,7 @@ interface DroppableColumnProps {
   projectId: string;
   isLoading: boolean;
   isHighlighted: boolean;
+  onTaskClick: (taskId: string) => void;
 }
 
 function DroppableColumn({
@@ -196,6 +200,7 @@ function DroppableColumn({
   projectId,
   isLoading,
   isHighlighted,
+  onTaskClick,
 }: DroppableColumnProps) {
   const [adding, setAdding] = useState(false);
   const { setNodeRef } = useDroppable({ id: status });
@@ -245,7 +250,12 @@ function DroppableColumn({
           ) : (
             <>
               {tasks.map((task, i) => (
-                <SortableTaskCard key={task.id} task={task} index={i} />
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  index={i}
+                  onClick={() => onTaskClick(task.id)}
+                />
               ))}
               {tasks.length === 0 && !adding && (
                 <p className="text-xs text-zinc-700 text-center mt-4">No tasks</p>
@@ -285,11 +295,13 @@ export default function ProjectBoardPage({ params }: { params: { id: string } })
   const { id: projectId } = params;
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: tasks = [], isLoading: tasksLoading } = useTasks(projectId);
+  const { currentOrg } = useOrganization();
   const updateTask = useUpdateTask(projectId);
   const moveTask = useMoveTask(projectId);
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overColumnId, setOverColumnId] = useState<TaskStatus | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -421,6 +433,7 @@ export default function ProjectBoardPage({ params }: { params: { id: string } })
               projectId={projectId}
               isLoading={tasksLoading}
               isHighlighted={overColumnId === status}
+              onTaskClick={(id) => setSelectedTaskId(id)}
             />
           ))}
         </div>
@@ -429,6 +442,16 @@ export default function ProjectBoardPage({ params }: { params: { id: string } })
           {activeTask ? <DragOverlayCard task={activeTask} /> : null}
         </DragOverlay>
       </DndContext>
+
+      {selectedTaskId && currentOrg && (
+        <TaskDetailDialog
+          taskId={selectedTaskId}
+          projectId={projectId}
+          orgId={currentOrg.id}
+          open={!!selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
     </div>
   );
 }
