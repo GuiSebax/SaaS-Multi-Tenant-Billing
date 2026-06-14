@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Boxes,
   Shield,
@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Check,
 } from 'lucide-react';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 // ─── Navbar ────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ function Navbar() {
           {[
             { label: 'Features', href: '#features' },
             { label: 'Pricing', href: '#pricing' },
-            { label: 'Docs', href: '#docs' },
+            { label: 'Docs', href: '#features' },
           ].map(({ label, href }) => (
             <a
               key={label}
@@ -91,14 +92,18 @@ function Navbar() {
           className="md:hidden px-6 py-4 space-y-1"
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
         >
-          {['Features', 'Pricing', 'Docs'].map((item) => (
+          {[
+            { label: 'Features', href: '#features' },
+            { label: 'Pricing', href: '#pricing' },
+            { label: 'Docs', href: '#features' },
+          ].map(({ label, href }) => (
             <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
+              key={label}
+              href={href}
               onClick={() => setOpen(false)}
               className="block text-sm text-zinc-400 hover:text-white transition-colors py-2"
             >
-              {item}
+              {label}
             </a>
           ))}
           <div className="pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -125,27 +130,43 @@ const fadeUp = (delay: number) => ({
 
 function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 pt-16 overflow-hidden">
+    <section className="relative flex items-center justify-center px-6 pt-28 pb-20 overflow-hidden">
       {/* Radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 65% 55% at 50% -5%, rgba(99,102,241,0.14) 0%, transparent 70%)',
+            'radial-gradient(ellipse 70% 60% at 50% -10%, rgba(99,102,241,0.18) 0%, transparent 65%)',
         }}
       />
 
+      {/* Floating orbs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute w-72 h-72 rounded-full blur-3xl animate-float opacity-20"
+          style={{ background: 'radial-gradient(circle, #6366f1, transparent)', top: '8%', left: '12%', animationDelay: '0s' }}
+        />
+        <div
+          className="absolute w-56 h-56 rounded-full blur-3xl animate-float-slow opacity-15"
+          style={{ background: 'radial-gradient(circle, #818cf8, transparent)', top: '20%', right: '8%', animationDelay: '-3s' }}
+        />
+        <div
+          className="absolute w-40 h-40 rounded-full blur-2xl animate-float opacity-10"
+          style={{ background: 'radial-gradient(circle, #a5b4fc, transparent)', bottom: '30%', left: '30%', animationDelay: '-5s' }}
+        />
+      </div>
+
       <div className="relative max-w-4xl mx-auto text-center">
         {/* Badge */}
-        <motion.div {...fadeUp(0)} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm text-indigo-400 mb-8 cursor-default">
+        <motion.div {...fadeUp(0)} className="mb-8">
           <div
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm text-indigo-400"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm text-indigo-400 cursor-default"
             style={{
               background: 'rgba(99,102,241,0.1)',
               border: '1px solid rgba(99,102,241,0.25)',
             }}
           >
-            <span className="text-indigo-500 text-base leading-none">✦</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
             Built for modern teams
           </div>
         </motion.div>
@@ -177,23 +198,171 @@ function Hero() {
         >
           <Link
             href="/auth/register"
-            className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-base font-semibold transition-colors duration-150"
+            className="relative flex items-center gap-2 px-7 py-3.5 rounded-xl text-white text-base font-semibold overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #6366f1 100%)',
+              backgroundSize: '200% auto',
+              animation: 'shimmer 3s linear infinite',
+              boxShadow: '0 0 24px rgba(99,102,241,0.35)',
+            }}
           >
-            Start for free
-            <ArrowRight size={16} />
+            <span className="relative z-10 flex items-center gap-2">
+              Start for free
+              <motion.span
+                animate={{ x: [0, 3, 0] }}
+                transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+              >
+                <ArrowRight size={16} />
+              </motion.span>
+            </span>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" style={{ background: 'rgba(255,255,255,0.08)' }} />
           </Link>
-          <button
-            className="flex items-center gap-2 px-7 py-3.5 rounded-xl text-base font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors duration-150"
+          <a
+            href="#hero-preview"
+            className="flex items-center gap-2 px-7 py-3.5 rounded-xl text-base font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer"
             style={{ border: '1px solid rgba(255,255,255,0.1)' }}
           >
             View demo
-          </button>
+          </a>
         </motion.div>
 
         {/* Fine print */}
         <motion.p {...fadeUp(0.4)} className="text-xs text-zinc-600 font-mono tracking-wide">
           No credit card required · Free forever plan
         </motion.p>
+
+        {/* App preview mockup */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mt-16 mx-auto max-w-4xl"
+        >
+          {/* Glow under preview */}
+          <div
+            className="absolute inset-x-12 bottom-0 h-24 blur-3xl -z-10 pointer-events-none"
+            style={{ background: 'rgba(99,102,241,0.25)' }}
+          />
+
+          {/* Browser chrome */}
+          <div
+            id="hero-preview"
+            className="rounded-2xl overflow-hidden relative"
+            style={{
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
+            }}
+          >
+            <BorderBeam size={300} duration={10} colorFrom="#6366f1" colorTo="#a5b4fc" borderWidth={1.5} borderRadius={16} />
+            {/* Browser toolbar */}
+            <div
+              className="flex items-center gap-3 px-5 py-3.5"
+              style={{ background: '#1A1A1D', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(255,95,87,0.6)' }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(255,189,46,0.6)' }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(40,201,64,0.6)' }} />
+              </div>
+              <div
+                className="flex-1 max-w-xs mx-auto flex items-center gap-2 px-3 py-1 rounded text-[11px] text-zinc-600"
+                style={{ background: 'rgba(255,255,255,0.04)' }}
+              >
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#6366F1' }} />
+                app.saasplatform.io/projects/marketing
+              </div>
+            </div>
+
+            {/* App layout */}
+            <div className="flex" style={{ background: '#0A0A0B', height: 280 }}>
+              {/* Sidebar */}
+              <div
+                className="w-44 flex flex-col flex-shrink-0 py-3 hidden sm:flex"
+                style={{ background: '#111113', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <div className="flex items-center gap-2 px-4 pb-3 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="w-4 h-4 rounded flex-shrink-0" style={{ background: '#6366F1' }} />
+                  <span className="text-[11px] font-semibold text-white">SaaS Platform</span>
+                </div>
+                {[
+                  { label: 'Dashboard', active: false },
+                  { label: 'Projects', active: true },
+                  { label: 'Organizations', active: false },
+                ].map(({ label, active }) => (
+                  <div
+                    key={label}
+                    className="flex items-center gap-2 mx-2 px-2.5 py-1.5 rounded-md mb-0.5"
+                    style={{
+                      background: active ? 'rgba(99,102,241,0.12)' : 'transparent',
+                      borderLeft: active ? '2px solid #6366F1' : '2px solid transparent',
+                    }}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                      style={{ background: active ? '#6366F1' : 'rgba(255,255,255,0.1)' }}
+                    />
+                    <span className="text-[10px]" style={{ color: active ? '#fff' : '#71717a' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Kanban */}
+              <div className="flex-1 p-4 overflow-hidden">
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-[11px] font-semibold text-white">Marketing Website</p>
+                  <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                    <span className="w-1 h-1 rounded-full bg-emerald-400 inline-block" />
+                    Active
+                  </span>
+                </div>
+                <div className="flex gap-3 h-[210px]">
+                  {[
+                    { label: 'Todo', color: '#71717a', tasks: ['Write landing copy', 'SEO audit'] },
+                    { label: 'In Progress', color: '#f59e0b', tasks: ['API integration', 'Auth flow'] },
+                    { label: 'Done', color: '#10b981', tasks: ['Project setup', 'Design system'] },
+                  ].map(({ label, color, tasks }) => (
+                    <div
+                      key={label}
+                      className="flex-1 rounded-lg p-2.5 flex flex-col"
+                      style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                        <span className="text-[9px] font-semibold text-white">{label}</span>
+                        <span
+                          className="ml-auto text-[8px] font-mono text-zinc-600 rounded px-1"
+                          style={{ background: 'rgba(255,255,255,0.06)' }}
+                        >
+                          {tasks.length}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {tasks.map((task) => (
+                          <div
+                            key={task}
+                            className="rounded px-2 py-1.5"
+                            style={{ background: '#1C1C1F', border: '1px solid rgba(255,255,255,0.06)' }}
+                          >
+                            <p className="text-[9px] text-white leading-tight">{task}</p>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="w-1 h-1 rounded-full" style={{ background: color }} />
+                              <div
+                                className="w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                                style={{ background: 'rgba(55,48,163,0.5)' }}
+                              >
+                                <span style={{ fontSize: 6, color: '#a5b4fc' }}>A</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -274,6 +443,16 @@ const FEATURES = [
   },
 ];
 
+const featureGridVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+
+const featureItemVariants: Variants = {
+  hidden: { opacity: 0, y: 24, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, type: 'tween' } },
+};
+
 function Features() {
   return (
     <section id="features" className="py-28 px-6" style={{ background: '#0A0A0B' }}>
@@ -296,23 +475,26 @@ function Features() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map(({ icon: Icon, title, description }, i) => (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          variants={featureGridVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {FEATURES.map(({ icon: Icon, title, description }) => (
             <motion.div
               key={title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="group rounded-xl p-6 transition-all duration-200 cursor-default"
+              variants={featureItemVariants}
+              className="group rounded-xl p-6 transition-all duration-200 cursor-default relative overflow-hidden"
               style={{
                 background: 'rgba(24,24,27,0.6)',
                 border: '1px solid rgba(255,255,255,0.06)',
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.borderColor = 'rgba(99,102,241,0.3)';
-                el.style.background = 'rgb(24,24,27)';
+                el.style.borderColor = 'rgba(99,102,241,0.25)';
+                el.style.background = 'rgb(20,20,24)';
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget as HTMLElement;
@@ -328,9 +510,14 @@ function Features() {
               </div>
               <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">{description}</p>
+              {/* Subtle hover glow */}
+              <div
+                className="absolute inset-x-0 top-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent)' }}
+              />
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -406,18 +593,23 @@ function Pricing() {
           <p className="text-zinc-400">No hidden fees. Upgrade or cancel anytime.</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-          {PLANS.map(({ name, price, period, description, features, cta, href, highlight, badge }, i) => (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } }}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+        >
+          {PLANS.map(({ name, price, period, description, features, cta, href, highlight, badge }) => (
             <motion.div
               key={name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
+              variants={{ hidden: { opacity: 0, y: 28, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, type: 'tween' } } } as Variants}
+              whileHover={highlight ? { scale: 1.02 } : { scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
               className="relative rounded-2xl p-8 flex flex-col"
               style={
                 highlight
-                  ? { background: '#6366F1', border: '1px solid rgba(99,102,241,0.5)' }
+                  ? { background: '#6366F1', border: '1px solid rgba(99,102,241,0.5)', boxShadow: '0 0 40px rgba(99,102,241,0.25)' }
                   : { background: 'rgb(24,24,27)', border: '1px solid rgba(255,255,255,0.06)' }
               }
             >
@@ -470,7 +662,7 @@ function Pricing() {
               </Link>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -504,13 +696,32 @@ function CTAFinal() {
         <p className="text-zinc-400 text-lg mb-10">
           Join thousands of teams already using SaaS Platform.
         </p>
-        <Link
-          href="/auth/register"
-          className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-base font-semibold transition-colors duration-150"
+        <motion.div
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          className="inline-block"
         >
-          Get started for free
-          <ArrowRight size={16} />
-        </Link>
+          <Link
+            href="/auth/register"
+            className="relative inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white text-base font-semibold overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 50%, #6366f1 100%)',
+              backgroundSize: '200% auto',
+              animation: 'shimmer 3s linear infinite',
+              boxShadow: '0 0 32px rgba(99,102,241,0.4)',
+            }}
+          >
+            Get started for free
+            <motion.span
+              animate={{ x: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+            >
+              <ArrowRight size={16} />
+            </motion.span>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'rgba(255,255,255,0.1)' }} />
+          </Link>
+        </motion.div>
       </motion.div>
     </section>
   );

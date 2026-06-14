@@ -9,15 +9,24 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <Icon size={24} className="text-zinc-500" />
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="relative mb-5">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center"
+          style={{
+            background: 'rgba(99,102,241,0.08)',
+            border: '1px solid rgba(99,102,241,0.15)',
+          }}
+        >
+          <Icon size={26} className="text-indigo-400/60" />
+        </div>
+        <div
+          className="absolute inset-0 rounded-2xl blur-xl -z-10"
+          style={{ background: 'rgba(99,102,241,0.08)' }}
+        />
       </div>
-      <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
-      <p className="text-sm text-zinc-400 max-w-[280px] leading-relaxed">{description}</p>
+      <h3 className="text-sm font-semibold text-white mb-1.5">{title}</h3>
+      <p className="text-sm text-zinc-500 max-w-[260px] leading-relaxed">{description}</p>
       {action && <div className="mt-6">{action}</div>}
     </div>
   );

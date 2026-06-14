@@ -23,8 +23,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { Plus, FolderKanban, Loader2 } from 'lucide-react';
+import { Plus, FolderKanban, Loader2, User, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { useProject } from '@/hooks/use-projects';
 import { useTasks, useCreateTask, useUpdateTask, useMoveTask } from '@/hooks/use-tasks';
 import { useOrganization } from '@/hooks/use-organization';
@@ -50,23 +51,30 @@ const inputClass =
 function TaskCardContent({ task }: { task: Task }) {
   return (
     <>
-      <p className="text-sm text-white leading-snug mb-2">{task.title}</p>
+      <p className="text-sm text-white leading-snug mb-2.5">{task.title}</p>
       {task.description && (
-        <p className="text-xs text-zinc-500 leading-relaxed mb-2 line-clamp-2">
+        <p className="text-xs text-zinc-500 leading-relaxed mb-2.5 line-clamp-2">
           {task.description}
         </p>
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-1">
         <StatusDot status={task.status} showLabel={false} />
         {task.assigneeId ? (
           <div
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-zinc-400"
-            style={{ background: 'rgba(255,255,255,0.08)' }}
-            title={task.assigneeId}
+            className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(55,48,163,0.5)' }}
+            title="Assigned"
           >
-            U
+            <User size={10} className="text-indigo-300" />
           </div>
-        ) : null}
+        ) : (
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+          >
+            <User size={10} className="text-zinc-600" />
+          </div>
+        )}
       </div>
     </>
   );
@@ -164,7 +172,7 @@ function NewTaskInline({
         <button
           type="submit"
           disabled={createTask.isPending || !title.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white text-xs font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white text-xs font-medium transition-colors cursor-pointer"
         >
           {createTask.isPending ? <Loader2 size={10} className="animate-spin" /> : null}
           Add
@@ -172,7 +180,7 @@ function NewTaskInline({
         <button
           type="button"
           onClick={onDone}
-          className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
         >
           Cancel
         </button>
@@ -207,7 +215,7 @@ function DroppableColumn({
 
   return (
     <div
-      className="flex flex-col flex-1 min-w-[280px] rounded-lg transition-colors duration-150"
+      className="flex flex-col h-full rounded-lg transition-colors duration-150"
       style={{
         background: '#111113',
         border: isHighlighted
@@ -232,7 +240,7 @@ function DroppableColumn({
         </div>
         <button
           onClick={() => setAdding(true)}
-          className="text-zinc-600 hover:text-zinc-300 transition-colors duration-150"
+          className="text-zinc-600 hover:text-zinc-300 transition-colors duration-150 cursor-pointer"
           aria-label={`Add task to ${label}`}
         >
           <Plus size={14} />
@@ -258,7 +266,15 @@ function DroppableColumn({
                 />
               ))}
               {tasks.length === 0 && !adding && (
-                <p className="text-xs text-zinc-700 text-center mt-4">No tasks</p>
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <p className="text-xs text-zinc-700">No tasks yet</p>
+                  <button
+                    onClick={() => setAdding(true)}
+                    className="mt-2 text-xs text-zinc-600 hover:text-indigo-400 transition-colors duration-150 cursor-pointer"
+                  >
+                    + Add one
+                  </button>
+                </div>
               )}
             </>
           )}
@@ -278,9 +294,9 @@ function DroppableColumn({
         <div className="px-3 pb-3">
           <button
             onClick={() => setAdding(true)}
-            className="w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] border border-dashed border-white/[0.08] hover:border-white/[0.14] transition-all duration-150"
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-200 hover:bg-white/[0.04] border border-dashed border-white/[0.08] hover:border-indigo-500/30 transition-all duration-200 cursor-pointer group"
           >
-            <Plus size={12} />
+            <Plus size={12} className="group-hover:text-indigo-400 transition-colors duration-200" />
             New Task
           </button>
         </div>
@@ -403,14 +419,28 @@ export default function ProjectBoardPage({ params }: { params: { id: string } })
   return (
     <div className="space-y-6">
       {/* Project header */}
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-base font-semibold text-white">{project.name}</h1>
-          <StatusDot status={project.status} />
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Link
+              href="/projects"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors duration-150 cursor-pointer"
+              aria-label="Back to projects"
+            >
+              <ChevronLeft size={16} />
+            </Link>
+            <h1 className="text-base font-semibold text-white">{project.name}</h1>
+            <StatusDot status={project.status} />
+          </div>
+          {project.description && (
+            <p className="text-xs text-zinc-500 ml-6">{project.description}</p>
+          )}
         </div>
-        {project.description && (
-          <p className="text-xs text-zinc-500">{project.description}</p>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-600 font-mono">
+            {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Kanban board */}
@@ -421,22 +451,32 @@ export default function ProjectBoardPage({ params }: { params: { id: string } })
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <motion.div
+          className="flex gap-4 overflow-x-auto pb-4"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } }}
+        >
           {COLUMNS.map(({ label, status }) => (
-            <DroppableColumn
+            <motion.div
               key={status}
-              label={label}
-              status={status}
-              tasks={tasks
-                .filter((t) => t.status === status)
-                .sort((a, b) => a.position - b.position)}
-              projectId={projectId}
-              isLoading={tasksLoading}
-              isHighlighted={overColumnId === status}
-              onTaskClick={(id) => setSelectedTaskId(id)}
-            />
+              variants={{ hidden: { opacity: 0, y: 16, scale: 0.97 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, type: 'tween' } } } as import('framer-motion').Variants}
+              className="flex-1 min-w-[280px]"
+            >
+              <DroppableColumn
+                label={label}
+                status={status}
+                tasks={tasks
+                  .filter((t) => t.status === status)
+                  .sort((a, b) => a.position - b.position)}
+                projectId={projectId}
+                isLoading={tasksLoading}
+                isHighlighted={overColumnId === status}
+                onTaskClick={(id) => setSelectedTaskId(id)}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <DragOverlay>
           {activeTask ? <DragOverlayCard task={activeTask} /> : null}

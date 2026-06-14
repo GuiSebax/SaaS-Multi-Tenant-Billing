@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
 import { Plus, FolderKanban, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjects, useCreateProject } from '@/hooks/use-projects';
@@ -31,6 +32,17 @@ type FormData = z.infer<typeof schema>;
 
 const inputClass =
   'w-full rounded-lg bg-[#0A0A0B] border border-white/[0.08] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/60 transition-colors';
+
+const gridVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 16, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, type: 'tween' } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
+};
 
 function projectColor(name: string): string {
   let hash = 0;
@@ -85,7 +97,7 @@ export default function ProjectsPage() {
             <p className="text-xs text-zinc-500 mt-0.5">
               {activeProjects.length} active
               {limit !== null && (
-                <span className="ml-1 text-zinc-600">/ {limit} max</span>
+                <span className="ml-1 text-zinc-600">/ {limit}</span>
               )}
             </p>
           </div>
@@ -93,7 +105,7 @@ export default function ProjectsPage() {
             <button
               onClick={handleOpen}
               disabled={atLimit}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors duration-150"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-white text-sm font-medium transition-colors duration-150"
             >
               <Plus size={14} />
               New Project
@@ -131,31 +143,39 @@ export default function ProjectsPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            {projects.map((project, i) => {
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full"
+            variants={gridVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <AnimatePresence>
+            {projects.map((project) => {
               const color = projectColor(project.name);
               return (
                 <motion.div
                   key={project.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  variants={cardVariants}
+                  exit="exit"
+                  layout
                 >
                   <Link
                     href={`/projects/${project.id}`}
-                    className="flex flex-col rounded-xl p-6 transition-all duration-200 group hover:-translate-y-px"
+                    className="flex flex-col rounded-xl p-6 transition-all duration-200 group cursor-pointer"
                     style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.14)';
+                      (e.currentTarget as HTMLElement).style.background = '#141416';
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)';
+                      (e.currentTarget as HTMLElement).style.background = '#111113';
                     }}
                   >
                     {/* Card header */}
                     <div className="flex items-start justify-between mb-4">
                       <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm"
                         style={{ background: color }}
                       >
                         {project.name[0].toUpperCase()}
@@ -164,31 +184,32 @@ export default function ProjectsPage() {
                     </div>
 
                     {/* Card body */}
-                    <h3 className="text-base font-semibold text-white mb-1 truncate">{project.name}</h3>
+                    <h3 className="text-sm font-semibold text-white mb-1.5 truncate">{project.name}</h3>
                     {project.description ? (
-                      <p className="text-sm text-zinc-400 line-clamp-2 leading-relaxed">{project.description}</p>
+                      <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed flex-1">{project.description}</p>
                     ) : (
-                      <p className="text-sm text-zinc-700 italic">No description</p>
+                      <p className="text-sm text-zinc-700 italic flex-1">No description</p>
                     )}
 
                     {/* Card footer */}
                     <div
-                      className="flex items-center justify-between mt-auto pt-3"
-                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '16px' }}
+                      className="flex items-center justify-between pt-3 mt-4"
+                      style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                     >
-                      <span className="text-xs text-zinc-600 font-mono">
-                        {new Date(project.createdAt).toLocaleDateString()}
+                      <span className="text-xs text-zinc-600">
+                        {formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}
                       </span>
                       <ArrowRight
                         size={13}
-                        className="text-zinc-700 group-hover:text-zinc-400 transition-colors duration-150"
+                        className="text-zinc-700 group-hover:text-indigo-400 transition-colors duration-200"
                       />
                     </div>
                   </Link>
                 </motion.div>
               );
             })}
-          </div>
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
 

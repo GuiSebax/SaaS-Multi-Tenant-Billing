@@ -26,6 +26,7 @@ import type { Plan } from '@saas-platform/shared';
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Projects', href: '/projects', icon: FolderKanban },
+  { label: 'Organizations', href: '/organizations', icon: Building2 },
 ];
 
 const SETTINGS_ITEMS = [
@@ -79,7 +80,7 @@ function WorkspaceSwitcher() {
     <div ref={ref} className="relative px-3 pb-2">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-white/[0.04] transition-colors duration-150"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-white/[0.04] transition-colors duration-150 cursor-pointer"
         style={{ border: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
@@ -291,7 +292,7 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
           </div>
           <button
             onClick={handleLogout}
-            className="text-zinc-500 hover:text-red-400 transition-colors duration-150 flex-shrink-0"
+            className="text-zinc-500 hover:text-red-400 transition-colors duration-150 flex-shrink-0 cursor-pointer"
             aria-label="Log out"
           >
             <LogOut size={14} />
