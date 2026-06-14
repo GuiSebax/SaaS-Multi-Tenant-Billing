@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { and, eq, gt, isNull } from 'drizzle-orm';
@@ -11,6 +11,9 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '@saas-platfor
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { MeResponseDto } from './dto/me-response.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 const BCRYPT_ROUNDS = 10;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -180,6 +183,57 @@ export class AuthService {
       }
     }
     // Not found in active tokens — idempotent no-op
+  }
+
+  async getMe(userId: string): Promise<MeResponseDto> {
+    const [user] = await this.tenantDb.withoutTenantContext((tx) =>
+      tx
+        .select({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1),
+    );
+
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<MeResponseDto> {
+    const [updated] = await this.tenantDb.withoutTenantContext((tx) =>
+      tx
+        .update(users)
+        .set({ name: dto.name })
+        .where(eq(users.id, userId))
+        .returning({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt }),
+    );
+
+    return updated;
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const [user] = await this.tenantDb.withoutTenantContext((tx) =>
+      tx.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)).limit(1),
+    );
+
+    const valid = await bcrypt.compare(dto.currentPassword, user?.passwordHash ?? '');
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+
+    const newHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+
+    await this.tenantDb.withoutTenantContext(async (tx) => {
+      await tx.update(users).set({ passwordHash: newHash }).where(eq(users.id, userId));
+      await tx
+        .update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+    });
+
+    const tokens = await this.generateTokens(userId);
+    await this.saveRefreshToken(userId, tokens.refreshToken);
+    return tokens;
   }
 
   private async verifyRefreshJwt(token: string): Promise<string> {

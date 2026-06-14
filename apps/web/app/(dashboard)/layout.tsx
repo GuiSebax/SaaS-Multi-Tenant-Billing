@@ -19,13 +19,18 @@ import {
 import { cn } from '@/lib/utils';
 import { clearTokens, getUser } from '@/lib/auth';
 import { useOrganization } from '@/hooks/use-organization';
+import { useMe } from '@/hooks/use-auth';
 import { PlanBadge } from '@/components/plan-badge';
 import type { Plan } from '@saas-platform/shared';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Projects', href: '/projects', icon: FolderKanban },
-  { label: 'Settings', href: '/settings/billing', icon: Settings },
+];
+
+const SETTINGS_ITEMS = [
+  { label: 'Profile', href: '/settings/profile' },
+  { label: 'Billing', href: '/settings/billing' },
 ];
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -35,6 +40,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   settings: 'Settings',
   billing: 'Billing',
   members: 'Members',
+  profile: 'Profile',
 };
 
 function useBreadcrumbs() {
@@ -143,7 +149,13 @@ function WorkspaceSwitcher() {
 function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const user = getUser();
+  const localUser = getUser();
+  const { data: meData } = useMe();
+
+  const displayName = meData?.name ?? localUser?.name ?? 'My Account';
+  const displayEmail = meData?.email ?? localUser?.email ?? '';
+
+  const isOnSettings = pathname.startsWith('/settings');
 
   const handleLogout = () => {
     clearTokens();
@@ -193,8 +205,7 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
           const isActive =
-            pathname === href ||
-            (href !== '/dashboard' && pathname.startsWith(href));
+            pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
           return (
             <Link
               key={href}
@@ -213,6 +224,51 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
             </Link>
           );
         })}
+
+        {/* Settings group */}
+        <div>
+          <Link
+            href="/settings/profile"
+            onClick={onClose}
+            className={cn(
+              'flex items-center gap-2.5 py-2 rounded-lg text-sm transition-all duration-150 border-l-2',
+              isOnSettings
+                ? 'text-white border-indigo-500 pl-[10px] pr-3'
+                : 'text-zinc-400 hover:text-zinc-200 border-transparent px-3 hover:bg-[rgba(255,255,255,0.04)]',
+            )}
+            style={isOnSettings ? { background: 'rgba(99,102,241,0.12)' } : undefined}
+          >
+            <Settings size={16} />
+            Settings
+            <ChevronDown
+              size={12}
+              className={cn(
+                'ml-auto transition-transform duration-150',
+                isOnSettings ? 'rotate-180' : '',
+              )}
+            />
+          </Link>
+
+          {isOnSettings && (
+            <div className="ml-7 mt-0.5 space-y-0.5 pl-3" style={{ borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+              {SETTINGS_ITEMS.map(({ label, href }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    'block py-1.5 px-2 text-xs rounded transition-colors duration-100',
+                    pathname === href
+                      ? 'text-white'
+                      : 'text-zinc-500 hover:text-zinc-300',
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* User Footer */}
@@ -225,13 +281,13 @@ function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => 
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-300 flex-shrink-0"
             style={{ background: 'rgba(55,48,163,0.6)' }}
           >
-            {user?.name?.[0]?.toUpperCase() ?? 'U'}
+            {displayName[0]?.toUpperCase() ?? 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-white truncate leading-none mb-0.5">
-              {user?.name ?? 'My Account'}
+              {displayName}
             </p>
-            <p className="text-[11px] text-zinc-500 truncate leading-none">{user?.email ?? ''}</p>
+            <p className="text-[11px] text-zinc-500 truncate leading-none">{displayEmail}</p>
           </div>
           <button
             onClick={handleLogout}
