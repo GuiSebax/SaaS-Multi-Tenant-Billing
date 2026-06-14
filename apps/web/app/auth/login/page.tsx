@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,8 +23,10 @@ type FormData = z.infer<typeof schema>;
 const inputClass =
   'w-full rounded-lg bg-[#0A0A0B] border border-white/[0.08] px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/60 transition-colors';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') ?? '/dashboard';
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -40,7 +42,7 @@ export default function LoginPage() {
         data,
       );
       setTokens(res.data.accessToken, res.data.refreshToken);
-      router.push('/dashboard');
+      router.push(redirectTo);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         toast.error('Invalid credentials');
@@ -119,5 +121,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </AuthCard>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

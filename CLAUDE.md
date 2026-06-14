@@ -78,7 +78,7 @@ cd apps/api && node dist/main.js
 - Dentro do Docker, os hostnames são `postgres` e `redis`. Fora do Docker, use `localhost`.
 - `NODE_ENV=test` **não** desliga STRIPE\_\* no `envSchema` atual — todas as variáveis são obrigatórias. Ajustar `envSchema` em `src/config/env.config.ts` quando necessário.
 
-Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`.
+Variáveis obrigatórias: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 32 chars), `JWT_REFRESH_SECRET` (min 32 chars), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`, `RESEND_API_KEY`.
 
 Variáveis com default: `FRONTEND_URL` (default `http://localhost:3000`), `PORT` (default 3001), `CORS_ORIGIN` (default `http://localhost:3000`), `NODE_ENV` (default `development`).
 
@@ -248,7 +248,8 @@ Notas de design:
 
 - Queue registrada com nome `'email'` (BullMQ via `BullModule.registerQueue`).
 - Job name: `'send-invitation'` — processado por `EmailProcessor` em `modules/email/`.
-- `EmailProcessor` atualmente loga no console; implementar SMTP real no M3+ sem mudar o contrato da queue.
+- `EmailProcessor` envia emails reais via Resend. `RESEND_CLIENT` token injetado via `resend.provider.ts` — use `@Inject(RESEND_CLIENT)` para acessar o client. `from` atual: `onboarding@resend.dev` (domínio de dev Resend).
+- Link de aceite gerado como `${FRONTEND_URL}/invitations/${token}/accept`.
 - Para enfileirar: `@InjectQueue('email')` no service e `this.emailQueue.add('send-invitation', payload)`.
 - O padrão BullMQ se aplica a **todos** os processamentos assíncronos do projeto (emails, webhooks Stripe).
 
@@ -338,6 +339,7 @@ Bibliotecas em uso no frontend:
 - Auth: `app/auth/login`, `app/auth/register` — layout em `app/auth/layout.tsx` (fundo `#0A0A0B`, logo centralizada, children centralizados).
 - Dashboard: `app/(dashboard)/` — route group implementado: `/dashboard`, `/projects`, `/projects/[id]`, `/organizations`, `/settings/billing`. Layout com sidebar fixa 240px + header breadcrumb.
 - Marketing: `app/(marketing)/` — route group (stub; apenas `/pricing` existe).
+- Invitations: `app/invitations/[token]/accept/page.tsx` — fora de qualquer route group. Se o usuário não estiver autenticado, redireciona para `/auth/login?redirect=/invitations/${token}/accept`. A página de login lê o parâmetro `redirect` e redireciona após login bem-sucedido.
 
 ---
 
@@ -412,11 +414,12 @@ M6 concluído até agora:
 
 - PR 6.1: Observabilidade completa — `JsonLoggerService` (implementa `LoggerService`, JSON estruturado no stdout), `RequestIdMiddleware` (UUID por request via header `X-Request-Id` ou gerado), `LoggingInterceptor` (APP_INTERCEPTOR global, loga `{timestamp, level, request_id, tenant_id, user_id, method, path, status, duration_ms, query_count}`). Prometheus via `@willsoto/nestjs-prometheus` em `GET /api/metrics` (`http_request_duration_ms`, `plan_limit_reached_total`, `webhook_processing_duration_ms`, `bullmq_job_failed_total`). `HealthModule` em `GET /api/health` com checks reais de PostgreSQL e Redis (`{status, timestamp, services}`). Slow query log no `TenantDbService.inTransaction` (warn se > 100ms). `JwtAuthGuard` bypass para `/api/metrics`. Métricas criadas com `getSingleMetric` fallback para evitar conflito de registro entre suites de teste.
 
-M7 em andamento:
+M7 concluído até agora:
 
 - PR 7.1: Next.js setup — Geist font, shadcn/ui, axios instance (`@/lib/axios`), token storage (`@/lib/auth`), `PlanLimitErrorResponse` em `@saas-platform/shared`, estrutura de rotas (`app/auth/`, `app/(dashboard)/`, `app/(marketing)/`).
-- PR 7.2: Páginas de auth — design system "Precision Dark" (fundo `#0A0A0B`, cards `#111113`, primário indigo-500). `AuthCard` com framer-motion. `/auth/login` e `/auth/register` com react-hook-form + zod + sonner. Interceptor axios: 401 → redirect login, 403 PLAN_LIMIT_REACHED → toast com ação upgrade.
+- PR 7.2: Páginas de auth — design system "Precision Dark" (fundo `#0A0A0B`, cards `#111113`, primário indigo-500). `AuthCard` com framer-motion. `/auth/login` e `/auth/register` com react-hook-form + zod + sonner. Interceptor axios: 401 → redirect login, 403 PLAN_LIMIT_REACHED → toast com ação upgrade. Login suporta `?redirect=` para retorno pós-autenticação.
 - PR 7.3: Dashboard completo — layout com sidebar fixa 240px (`#111113`), workspace switcher (dropdown click-outside), nav com active state (indigo border-l-2 + bg), breadcrumb dinâmico, footer com avatar + logout. Páginas: `/dashboard` (stats cards + recent projects via `useQueries` paralelo), `/projects` (grid stagger +50ms, sheet new project, tooltip plan limit), `/projects/[id]` (kanban 3 colunas, inline task creation), `/organizations` (switch + sheet new org, auto-slug), `/settings/billing` (upgrade card ou manage portal). Hooks em `hooks/`: `useOrganization`, `useProjects`, `useProject`, `useCreateProject`, `useTasks`, `useCreateTask`. Componentes em `components/`: `PlanBadge` (free/pro/enterprise), `StatusDot`, `EmptyState`, `SkeletonCard`, `Sheet` (framer-motion drawer). Axios interceptor inclui `X-Organization-Id` do localStorage. `lib/auth.ts` agora exporta `setUser/getUser` para exibir nome no sidebar.
+- PR 7.4: Emails reais via Resend (`resend.provider.ts`, `RESEND_CLIENT` token, `RESEND_API_KEY` obrigatória). Página de aceite de convite (`app/invitations/[token]/accept`).
 
 PR atual: Etapa 8 — Produto real
 

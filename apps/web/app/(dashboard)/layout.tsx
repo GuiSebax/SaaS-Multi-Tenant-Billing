@@ -34,6 +34,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   organizations: 'Organizations',
   settings: 'Settings',
   billing: 'Billing',
+  members: 'Members',
 };
 
 function useBreadcrumbs() {

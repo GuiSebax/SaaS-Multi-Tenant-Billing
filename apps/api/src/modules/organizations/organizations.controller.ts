@@ -48,6 +48,13 @@ export class OrganizationsController {
     return this.organizationsService.findMembers(organizationId);
   }
 
+  @Get(':id/invitations')
+  @UseGuards(TenantGuard, RolesGuard)
+  @RequireRole('owner', 'admin')
+  findInvitations(@Param('id') organizationId: string): Promise<InvitationResponseDto[]> {
+    return this.organizationsService.findInvitations(organizationId);
+  }
+
   @Post(':id/invitations')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(TenantGuard, RolesGuard)

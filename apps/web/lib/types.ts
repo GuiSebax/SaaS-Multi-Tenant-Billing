@@ -21,4 +21,12 @@ export interface OrgMember {
   role: 'owner' | 'admin' | 'member';
   name: string;
   email: string;
+  joinedAt: string;
+}
+
+export interface OrgInvitation {
+  id: string;
+  email: string;
+  role: 'admin' | 'member';
+  expiresAt: string;
 }

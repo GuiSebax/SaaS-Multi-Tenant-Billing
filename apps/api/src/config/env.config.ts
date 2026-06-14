@@ -10,6 +10,7 @@ export const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   STRIPE_PRO_PRICE_ID: z.string().min(1),
   STRIPE_ENTERPRISE_PRICE_ID: z.string().min(1),
+  RESEND_API_KEY: z.string().min(1),
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
   PORT: z.string().optional().default('3001'),
   CORS_ORIGIN: z.string().optional().default('http://localhost:3000'),

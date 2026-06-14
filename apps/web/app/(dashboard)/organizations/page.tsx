@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Plus, Building2, Check } from 'lucide-react';
+import { Plus, Building2, Check, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
@@ -104,6 +104,11 @@ export default function OrganizationsPage() {
     router.push('/dashboard');
   }
 
+  function handleManage(orgId: string) {
+    switchOrg(orgId);
+    router.push(`/organizations/${orgId}/members`);
+  }
+
   return (
     <>
       <div className="w-full space-y-6">
@@ -180,14 +185,23 @@ export default function OrganizationsPage() {
                         <span className="text-xs text-zinc-500">{ROLE_LABELS[org.role]}</span>
                       </div>
                     </div>
-                    {!isActive && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
-                        onClick={() => handleSwitch(org.id)}
-                        className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors duration-150 flex-shrink-0"
+                        onClick={() => handleManage(org.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors duration-150"
                       >
-                        Switch
+                        <Users size={11} />
+                        Manage
                       </button>
-                    )}
+                      {!isActive && (
+                        <button
+                          onClick={() => handleSwitch(org.id)}
+                          className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors duration-150"
+                        >
+                          Switch
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               );

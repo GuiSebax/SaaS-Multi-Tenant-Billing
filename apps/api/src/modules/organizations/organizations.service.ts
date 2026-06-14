@@ -287,10 +287,31 @@ export class OrganizationsService {
           role: organizationMembers.role,
           name: users.name,
           email: users.email,
+          joinedAt: organizationMembers.joinedAt,
         })
         .from(organizationMembers)
         .innerJoin(users, eq(organizationMembers.userId, users.id))
         .where(eq(organizationMembers.organizationId, organizationId)),
+    );
+  }
+
+  async findInvitations(organizationId: string): Promise<InvitationResponseDto[]> {
+    return this.tenantDb.withoutTenantContext((db) =>
+      db
+        .select({
+          id: invitations.id,
+          email: invitations.email,
+          role: invitations.role,
+          expiresAt: invitations.expiresAt,
+        })
+        .from(invitations)
+        .where(
+          and(
+            eq(invitations.organizationId, organizationId),
+            isNull(invitations.acceptedAt),
+            gt(invitations.expiresAt, new Date()),
+          ),
+        ),
     );
   }
 
